@@ -81,12 +81,28 @@
         },
 
         saveSettings: function () {
+            var self = this;
             this.model.save({
                 title: this.$('#blog-title').val(),
                 email: this.$('#email-address').val()
             }, {
                 success: function () {
-                    window.alert('Saved');
+                    self.addSubview(new Ghost.Views.NotificationCollection({
+                        model: [{
+                            type: 'success',
+                            message: 'Saved',
+                            status: 'passive'
+                        }]
+                    }));
+                },
+                error: function () {
+                    self.addSubview(new Ghost.Views.NotificationCollection({
+                        model: [{
+                            type: 'error',
+                            message: 'Something went wrong, not saved :(',
+                            status: 'passive'
+                        }]
+                    }));
                 }
             });
         },
@@ -110,7 +126,23 @@
                 description: this.$('#blog-description').val()
             }, {
                 success: function () {
-                    window.alert('Saved');
+                    this.addSubview(new Ghost.Views.NotificationCollection({
+                        model: [{
+                            type: 'success',
+                            message: 'Saved',
+                            status: 'passive'
+                        }]
+                    }));
+
+                },
+                error: function () {
+                    this.addSubview(new Ghost.Views.NotificationCollection({
+                        model: [{
+                            type: 'error',
+                            message: 'Something went wrong, not saved :(',
+                            status: 'passive'
+                        }]
+                    }));
                 }
             });
         },

@@ -72,4 +72,61 @@
         }
     });
 
+    /**
+     * This is the view to generate the markup for the individual
+     * notification. Will be included into #flashbar.
+     *
+     * States can be
+     * - persistent
+     * - passive
+     *
+     * Types can be
+     * - error
+     * - success
+     * - alert
+     * -   (empty)
+     *
+     */
+    Ghost.Views.Notification = Ghost.View.extend({
+        templateName: 'notification',
+        className: 'js-bb-notification',
+        template: function (data) {
+            return JST[this.templateName](data);
+        },
+        render: function () {
+            var html = this.template(this.model);
+            this.$el.html(html);
+            return this;
+        }
+    });
+
+    /**
+     * This handles Notification groups
+     */
+    Ghost.Views.NotificationCollection = Ghost.View.extend({
+        el: '#flashbar',
+        initialize: function () {
+            this.render();
+        },
+        events: {
+            'animationend .js-notification': 'removeItem',
+            'webkitAnimationEnd .js-notification': 'removeItem',
+            'oanimationend .js-notification': 'removeItem',
+            'MSAnimationEnd .js-notification': 'removeItem'
+        },
+        render: function () {
+            _.each(this.model, function (item) {
+                this.renderItem(item);
+            }, this);
+        },
+        renderItem: function (item) {
+            var itemView = new Ghost.Views.Notification({ model: item });
+            this.$el.html(itemView.render().el);
+        },
+        removeItem: function (e) {
+            e.preventDefault();
+            $(e.currentTarget).remove();
+        }
+    });
+
 }());
