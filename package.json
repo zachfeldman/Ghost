@@ -1,6 +1,6 @@
 {
   "name": "ghost",
-  "version": "0.2.0-14",
+  "version": "0.2.0-15",
   "private": true,
   "scripts": {
     "start": "node index",
