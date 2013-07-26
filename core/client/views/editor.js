@@ -23,7 +23,14 @@
             {'key': 'Ctrl+Shift+L', 'style': 'link'},
             {'key': 'Ctrl+Shift+I', 'style': 'image'},
             {'key': 'Ctrl+Q', 'style': 'blockquote'},
-            {'key': 'Ctrl+Shift+1', 'style': 'currentdate'}
+            {'key': 'Ctrl+Shift+1', 'style': 'currentdate'},
+            {'key': 'Ctrl+U', 'style': 'uppercase'},
+            {'key': 'Ctrl+Shift+U', 'style': 'lowercase'},
+            {'key': 'Ctrl+Alt+Shift+U', 'style': 'titlecase'},
+            {'key': 'Ctrl+Alt+W', 'style': 'selectword'},
+            {'key': 'Ctrl+L', 'style': 'list'},
+            {'key': 'Ctrl+Alt+C', 'style': 'copyHTML'},
+            {'key': 'CMD+Alt+C', 'style': 'copyHTML'}
         ];
 
     // The publish bar associated with a post, which has the TagWidget and
@@ -221,7 +228,6 @@
             this.initMarkdown();
             this.renderPreview();
 
-            // TODO: Debounce
             this.$('.CodeMirror-scroll').on('scroll', this.syncScroll);
 
             // Shadow on Markdown if scrolled
@@ -254,7 +260,11 @@
 
         },
 
-        syncScroll: function (e) {
+        events: {
+            'click .markdown-help': 'showHelp'
+        },
+
+        syncScroll: _.debounce(function (e) {
             var $codeViewport = $(e.target),
                 $previewViewport = $('.entry-preview-content'),
                 $codeContent = $('.CodeMirror-sizer'),
@@ -268,6 +278,18 @@
 
             // apply new scroll
             $previewViewport.scrollTop(previewPostition);
+        }, 50),
+
+        showHelp: function () {
+            this.addSubview(new Ghost.Views.Modal({
+                model: {
+                    title: 'Markdown Help',
+                    content: {
+                        template: 'markdown'
+                    },
+                    animation: 'fadeIn'
+                }
+            }));
         },
 
         // This updates the editor preview panel.
@@ -296,6 +318,14 @@
 
             var view = this;
 
+            // Inject modal for HTML to be viewed in
+            shortcut.add("Ctrl+Alt+C", function () {
+                view.showHTML();
+            });
+            shortcut.add("Ctrl+Alt+C", function () {
+                view.showHTML();
+            });
+
             _.each(MarkdownShortcuts, function (combo) {
                 shortcut.add(combo.key, function () {
                     return view.editor.addMarkdown({style: combo.style});
@@ -305,6 +335,18 @@
             this.editor.on('change', function () {
                 view.renderPreview();
             });
+        },
+
+        showHTML: function () {
+            this.addSubview(new Ghost.Views.Modal({
+                model: {
+                    title: 'Copied HTML',
+                    content: {
+                        template: 'copyToHTML'
+                    },
+                    animation: 'fadeIn'
+                }
+            }));
         }
     });
 
