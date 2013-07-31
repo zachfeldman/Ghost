@@ -4,6 +4,8 @@
 var express = require('express'),
     when = require('when'),
     _ = require('underscore'),
+    colors = require("colors"),
+    semver = require("semver"),
     errors = require('./core/server/errorHandling'),
     admin = require('./core/server/controllers/admin'),
     frontend = require('./core/server/controllers/frontend'),
@@ -13,6 +15,7 @@ var express = require('express'),
     I18n = require('./core/shared/lang/i18n'),
     filters = require('./core/server/filters'),
     helpers = require('./core/server/helpers'),
+    packageInfo = require('./package.json'),
 
 // ## Custom Middleware
     auth,
@@ -82,6 +85,7 @@ isGhostAdmin = function (req, res, next) {
 ghostLocals = function (req, res, next) {
     // Make sure we have a locals value.
     res.locals = res.locals || {};
+    res.locals.version = packageInfo.version;
 
     if (!res.isAdmin) {
         // filter the navigation items
@@ -116,17 +120,25 @@ disableCachedResult = function (req, res, next) {
     next();
 };
 
-ghost.app().configure('development', function () {
+ghost.app().configure(function() {
     ghost.app().use(isGhostAdmin);
     ghost.app().use(express.favicon(__dirname + '/content/images/favicon.ico'));
-    ghost.app().use(express.errorHandler({ dumpExceptions: true, showStack: true }));
-    ghost.app().use(express.logger('dev'));
     ghost.app().use(I18n.load(ghost));
     ghost.app().use(express.bodyParser({}));
     ghost.app().use(express.cookieParser('try-ghost'));
     ghost.app().use(express.cookieSession({ cookie: { maxAge: 60000000 }}));
     ghost.app().use(ghost.initTheme(ghost.app()));
     ghost.app().use(flash());
+
+    if (process.env.NODE_ENV !== "development") {
+        ghost.app().use(express.logger());
+        ghost.app().use(express.errorHandler({ dumpExceptions: false, showStack: false }));
+    }
+});
+
+ghost.app().configure("development", function() {
+    ghost.app().use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+    ghost.app().use(express.logger('dev'));
 });
 
 
@@ -187,13 +199,30 @@ when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(
     ghost.app().get('/', frontend.homepage);
     ghost.app().get('/page/:page/', frontend.homepage);
 
-
-
-
     ghost.app().listen(
         ghost.config().env[process.env.NODE_ENV || 'development'].url.port,
         ghost.config().env[process.env.NODE_ENV || 'development'].url.host,
         function () {
+
+            // Tell users if their node version is not supported, and exit
+            if (!semver.satisfies(process.versions.node, packageInfo.engines.node)) {
+                console.log(
+                    "\n !!! INVALID NODE VERSION !!!\n".red,
+                    "Ghost requires node version".red,
+                    packageInfo.engines.node.yellow,
+                    "as defined in package.json\n".red
+                );
+
+                process.exit(-1);
+            }
+
+            // Remove once software becomes suitably 'ready'
+            console.log(
+                "\n !!! ALPHA SOFTWARE WARNING !!!\n".red,
+                "Ghost is in the early stages of development.\n".red,
+                "Expect to see bugs and other issues (but please report them.)\n".red
+            );
+
             console.log("Express server listening on address:",
                 ghost.config().env[process.env.NODE_ENV || 'development'].url.host + ':'
                     + ghost.config().env[process.env.NODE_ENV || 'development'].url.port);
