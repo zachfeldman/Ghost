@@ -2,7 +2,41 @@
 (function () {
     "use strict";
 
-    Ghost.View = Backbone.View.extend({
+    Ghost.TemplateView = Backbone.View.extend({
+        templateName: "widget",
+
+        template: function (data) {
+            return JST[this.templateName](data);
+        },
+
+        templateData: function () {
+            if (this.model) {
+                return this.model.toJSON();
+            }
+
+            if (this.collection) {
+                return this.collection.toJSON();
+            }
+
+            return {};
+        },
+
+        render: function () {
+            if (_.isFunction(this.beforeRender)) {
+                this.beforeRender();
+            }
+
+            this.$el.html(this.template(this.templateData()));
+
+            if (_.isFunction(this.afterRender)) {
+                this.afterRender();
+            }
+
+            return this;
+        }
+    });
+
+    Ghost.View = Ghost.TemplateView.extend({
 
         // Adds a subview to the current view, which will
         // ensure its removal when this view is removed,
@@ -42,36 +76,6 @@
 
     });
 
-    Ghost.TemplateView = Ghost.View.extend({
-        templateName: "widget",
-
-        template: function (data) {
-            return JST[this.templateName](data);
-        },
-
-        templateData: function () {
-            if (this.model) {
-                return this.model.toJSON();
-            }
-
-            if (this.collection) {
-                return this.collection.toJSON();
-            }
-
-            return {};
-        },
-
-        render: function () {
-            this.$el.html(this.template(this.templateData()));
-
-            if (_.isFunction(this.afterRender)) {
-                this.afterRender();
-            }
-
-            return this;
-        }
-    });
-
     /**
      * This is the view to generate the markup for the individual
      * notification. Will be included into #flashbar.
@@ -90,6 +94,10 @@
     Ghost.Views.Notification = Ghost.View.extend({
         templateName: 'notification',
         className: 'js-bb-notification',
+        events: {
+            'click .js-notification.notification-passive .close': 'closePassive',
+            'click .js-notification.notification-persistent .close': 'closePersistent'
+        },
         template: function (data) {
             return JST[this.templateName](data);
         },
@@ -97,7 +105,24 @@
             var html = this.template(this.model);
             this.$el.html(html);
             return this;
+        },
+        closePassive: function (e) {
+            $(e.currentTarget).parent().fadeOut(200,  function () { $(this).remove(); });
+        },
+        closePersistent: function (e) {
+            var self = e.currentTarget;
+            $.ajax({
+                type: "DELETE",
+                url: '/api/v0.1/notifications/' + $(this).data('id')
+            }).done(function (result) {
+                if ($(self).parent().parent().hasClass('js-bb-notification')) {
+                    $(self).parent().parent().fadeOut(200, function () { $(self).remove(); });
+                } else {
+                    $(self).parent().fadeOut(200, function () { $(self).remove(); });
+                }
+            });
         }
+
     });
 
     /**
