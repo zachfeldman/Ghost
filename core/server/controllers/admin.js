@@ -2,11 +2,13 @@ var Ghost = require('../../ghost'),
     dataExport = require('../data/export'),
     dataImport = require('../data/import'),
     _ = require('underscore'),
-    fs = require('fs'),
+    fs = require('fs-extra'),
     path = require('path'),
     when = require('when'),
     nodefn = require('when/node/function'),
     api = require('../api'),
+    moment = require('moment'),
+    errors = require('../errorHandling'),
 
     ghost = new Ghost(),
     dataProvider = ghost.dataProvider,
@@ -19,28 +21,24 @@ adminNavbar = {
         name: 'Dashboard',
         navClass: 'dashboard',
         key: 'admin.navbar.dashboard',
-        // defaultString: 'dashboard',
         path: '/'
     },
     content: {
         name: 'Content',
         navClass: 'content',
         key: 'admin.navbar.content',
-        // defaultString: 'content',
         path: '/content/'
     },
     add: {
         name: 'New Post',
         navClass: 'editor',
         key: 'admin.navbar.editor',
-        // defaultString: 'editor',
         path: '/editor/'
     },
     settings: {
         name: 'Settings',
         navClass: 'settings',
         key: 'admin.navbar.settings',
-        // defaultString: 'settings',
         path: '/settings/'
     }
 };
@@ -54,6 +52,40 @@ function setSelected(list, name) {
 }
 
 adminControllers = {
+    'uploader': function (req, res) {
+        var currentDate = moment(),
+            month = currentDate.format("MMM"),
+            year =  currentDate.format("YYYY"),
+            tmp_path = req.files.uploadimage.path,
+            dir = path.join('content/images', year, month),
+            target_path = path.join(dir, req.files.uploadimage.name),
+            ext = path.extname(req.files.uploadimage.name),
+            src = path.join('/', target_path);
+
+
+        function renameFile() {
+            // adds directories recursively
+            fs.mkdirs(dir, function (err) {
+                if (err) {
+                    errors.logError(err);
+                } else {
+                    fs.copy(tmp_path, target_path, function (err) {
+                        if (err) {
+                            errors.logError(err);
+                        } else {
+                            res.send(src);
+                        }
+                    });
+                }
+            });
+        }
+
+        if (ext === ".jpg" || ext === ".png" || ext === ".gif") {
+            renameFile();
+        } else {
+            res.send("Invalid filetype");
+        }
+    },
     'login': function (req, res) {
         res.render('login', {
             bodyClass: 'ghost-login',
@@ -68,6 +100,19 @@ adminControllers = {
         }, function (error) {
             res.send(401);
         });
+    },
+    changepw: function (req, res) {
+        api.users.changePassword({
+            email: req.body.email,
+            oldpw: req.body.password,
+            newpw: req.body.newpassword,
+            ne2pw: req.body.ne2password
+        }).then(function (user) {
+            res.json(200, {msg: 'Password changed successfully'});
+        }, function (error) {
+            res.send(401);
+        });
+
     },
     'signup': function (req, res) {
         res.render('signup', {
@@ -105,7 +150,6 @@ adminControllers = {
         });
     },
     'editor': function (req, res) {
-        console.log(res.locals);
         if (req.params.id !== undefined) {
             api.posts.read({id: parseInt(req.params.id, 10)})
                 .then(function (post) {
@@ -174,15 +218,31 @@ adminControllers = {
                 })
                 .otherwise(function (error) {
                     // Notify of an error if it occurs
-                    req.flash("error", error.message || error);
-                    res.redirect("/ghost/debug");
+                    var notification = {
+                        type: 'error',
+                        message: error.message || error,
+                        status: 'persistent',
+                        id: 'per-' + (ghost.notifications.length + 1)
+                    };
+
+                    return api.notifications.add(notification).then(function () {
+                        res.redirect("/ghost/debug/");
+                    });
                 });
         },
         'import': function (req, res) {
             if (!req.files.importfile) {
                 // Notify of an error if it occurs
-                req.flash("error", "Must select a file to import");
-                return res.redirect("/ghost/debug");
+                var notification = {
+                    type: 'error',
+                    message:  "Must select a file to import",
+                    status: 'persistent',
+                    id: 'per-' + (ghost.notifications.length + 1)
+                };
+
+                return api.notifications.add(notification).then(function () {
+                    res.redirect("/ghost/debug/");
+                });
             }
 
             // Get the current version for importing
@@ -213,44 +273,59 @@ adminControllers = {
                             return dataImport(currentVersion, importData);
                         });
                 })
-                .then(function () {
-                    req.flash("success", "Data imported");
-                })
-                .otherwise(function (error) {
+                .then(function importSuccess() {
+                    var notification = {
+                        type: 'success',
+                        message: "Data imported. Log in with the user details you imported",
+                        status: 'persistent',
+                        id: 'per-' + (ghost.notifications.length + 1)
+                    };
+
+                    return api.notifications.add(notification).then(function () {
+                        delete req.session.user;
+                        res.redirect('/ghost/login/');
+                    });
+
+                }, function importFailure(error) {
                     // Notify of an error if it occurs
-                    req.flash("error", error.message || error);
-                })
-                .then(function () {
-                    res.redirect("/ghost/debug");
+                    var notification = {
+                        type: 'error',
+                        message: error.message || error,
+                        status: 'persistent',
+                        id: 'per-' + (ghost.notifications.length + 1)
+                    };
+
+                    return api.notifications.add(notification).then(function () {
+                        res.redirect('/ghost/debug/');
+                    });
                 });
         },
         'reset': function (req, res) {
             // Grab the current version so we can get the migration
-            api.settings.read({ key: "currentVersion" })
-                .then(function (setting) {
-                    var migration = require("../../shared/data/migration/" + setting.value);
+            dataProvider.reset()
+                .then(function resetSuccess() {
+                    var notification = {
+                        type: 'success',
+                        message: "Database reset. Create a new user",
+                        status: 'persistent',
+                        id: 'per-' + (ghost.notifications.length + 1)
+                    };
 
-                    // Run the downward migration
-                    return migration.down();
-                }, function () {
-                    // If no version in the DB, assume 001
-                    var migration = require(".././migration/001");
+                    return api.notifications.add(notification).then(function () {
+                        delete req.session.user;
+                        res.redirect('/ghost/signup/');
+                    });
+                }, function resetFailure(error) {
+                    var notification = {
+                        type: 'error',
+                        message: error.message || error,
+                        status: 'persistent',
+                        id: 'per-' + (ghost.notifications.length + 1)
+                    };
 
-                    // Run the downward migration
-                    return migration.down();
-                })
-                .then(function () {
-                    // Re-initalize the providers (should run the migration up again)
-                    return dataProvider.init();
-                })
-                .then(function () {
-                    req.flash("success", "Database reset");
-                })
-                .otherwise(function (error) {
-                    req.flash("error", error.message || error);
-                })
-                .then(function () {
-                    res.redirect('/ghost/debug');
+                    return api.notifications.add(notification).then(function () {
+                        res.redirect('/ghost/debug/');
+                    });
                 });
         }
     }

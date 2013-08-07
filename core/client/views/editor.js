@@ -102,67 +102,54 @@
             this.savePost({
                 status: keys[newIndex]
             }).then(function () {
-                this.addSubview(new Ghost.Views.NotificationCollection({
-                    model: [{
-                        type: 'success',
-                        message: 'Your post: ' + model.get('title') + ' has been ' + keys[newIndex],
-                        status: 'passive'
-                    }]
-                }));
+                Ghost.notifications.addItem({
+                    type: 'success',
+                    message: 'Your post: ' + model.get('title') + ' has been ' + keys[newIndex],
+                    status: 'passive'
+                });
             }, function () {
-                this.addSubview(new Ghost.Views.NotificationCollection({
-                    model: [{
-                        type: 'error',
-                        message: 'Your post: ' + model.get('title') + ' has not been ' + keys[newIndex],
-                        status: 'passive'
-                    }]
-                }));
+                Ghost.notifications.addItem({
+                    type: 'error',
+                    message: 'Your post: ' + model.get('title') + ' has not been ' + keys[newIndex],
+                    status: 'passive'
+                });
             });
         },
 
         handleStatus: function (e) {
             e.preventDefault();
             var status = $(e.currentTarget).attr('data-set-status'),
-                model = this.model,
-                self = this;
+                model = this.model;
 
             if (status === 'publish-on') {
-                this.addSubview(new Ghost.Views.NotificationCollection({
-                    model: [{
-                        type: 'alert',
-                        message: 'Scheduled publishing not supported yet.',
-                        status: 'passive'
-                    }]
-                }));
+                Ghost.notifications.addItem({
+                    type: 'alert',
+                    message: 'Scheduled publishing not supported yet.',
+                    status: 'passive'
+                });
             }
             if (status === 'queue') {
-                this.addSubview(new Ghost.Views.NotificationCollection({
-                    model: [{
-                        type: 'alert',
-                        message: 'Scheduled publishing not supported yet.',
-                        status: 'passive'
-                    }]
-                }));
+                Ghost.notifications.addItem({
+                    type: 'alert',
+                    message: 'Scheduled publishing not supported yet.',
+                    status: 'passive'
+                });
             }
 
             this.savePost({
                 status: status
             }).then(function () {
-                self.addSubview(new Ghost.Views.NotificationCollection({
-                    model: [{
-                        type: 'success',
-                        message: 'Your post: ' + model.get('title') + ' has been ' + status,
-                        status: 'passive'
-                    }]
-                }));
+                Ghost.notifications.addItem({
+                    type: 'success',
+                    message: 'Your post: ' + model.get('title') + ' has been ' + status,
+                    status: 'passive'
+                });
             }, function () {
-                self.addSubview(new Ghost.Views.NotificationCollection({
-                    model: [{
-                        type: 'error',
-                        message: 'Your post: ' + model.get('title') + ' has not been ' + status,
-                        status: 'passive'
-                    }]
-                }));
+                Ghost.notifications.addItem({
+                    type: 'error',
+                    message: 'Your post: ' + model.get('title') + ' has not been ' + status,
+                    status: 'passive'
+                });
             });
         },
 
@@ -170,24 +157,19 @@
             if (e) {
                 e.preventDefault();
             }
-            var model = this.model,
-                self = this;
+            var model = this.model;
             this.savePost().then(function () {
-                self.addSubview(new Ghost.Views.NotificationCollection({
-                    model: [{
-                        type: 'success',
-                        message: 'Your post was saved as ' + model.get('status'),
-                        status: 'passive'
-                    }]
-                }));
+                Ghost.notifications.addItem({
+                    type: 'success',
+                    message: 'Your post was saved as ' + model.get('status'),
+                    status: 'passive'
+                });
             }, function () {
-                self.addSubview(new Ghost.Views.NotificationCollection({
-                    model: [{
-                        type: 'error',
-                        message: model.validationError,
-                        status: 'passive'
-                    }]
-                }));
+                Ghost.notifications.addItem({
+                    type: 'error',
+                    message: model.validationError,
+                    status: 'passive'
+                });
             });
         },
 
@@ -321,6 +303,7 @@
             var view = this,
                 preview = document.getElementsByClassName('rendered-markdown')[0];
             preview.innerHTML = this.converter.makeHtml(this.editor.getValue());
+            view.$('.js-drop-zone').upload({editor: true});
             Countable.once(preview, function (counter) {
                 view.$('.entry-word-count').text(counter.words + ' words');
                 view.$('.entry-character-count').text(counter.characters + ' characters');

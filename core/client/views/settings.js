@@ -14,10 +14,6 @@
                 pane: options.pane,
                 model: this.model
             }));
-
-            this.$('input').iCheck({
-                checkboxClass: 'icheckbox_ghost'
-            });
         }
     });
 
@@ -29,6 +25,8 @@
             this.menu = this.$('.settings-menu');
             this.showContent(options.pane || 'general');
         },
+
+        models: {},
 
         events: {
             'click .settings-menu li' : 'switchPane'
@@ -42,13 +40,30 @@
         },
 
         showContent: function (id) {
+            var self = this,
+                model;
+
             Backbone.history.navigate('/settings/' + id);
             if (this.pane && id === this.pane.el.id) {
                 return;
             }
             _.result(this.pane, 'destroy');
             this.setActive(id);
-            this.pane = new Settings[id]({ el: '.settings-content', model: this.model });
+            this.pane = new Settings[id]({ el: '.settings-content'});
+
+            if (!this.models.hasOwnProperty(this.pane.options.modelType)) {
+                model = this.models[this.pane.options.modelType] = new Ghost.Models[this.pane.options.modelType]();
+                model.fetch().then(function () {
+                    self.renderPane(model);
+                });
+            } else {
+                model = this.models[this.pane.options.modelType];
+                self.renderPane(model);
+            }
+        },
+
+        renderPane: function (model) {
+            this.pane.model = model;
             this.pane.render();
         },
 
@@ -63,6 +78,9 @@
     // Content panes
     // --------------
     Settings.Pane = Ghost.View.extend({
+        options: {
+            modelType: 'Settings'
+        },
         destroy: function () {
             this.$el.removeClass('active');
             this.undelegateEvents();
@@ -71,6 +89,25 @@
         afterRender: function () {
             this.$el.attr('id', this.id);
             this.$el.addClass('active');
+
+            this.$('input').iCheck({
+                checkboxClass: 'icheckbox_ghost'
+            });
+        },
+        saveSuccess: function () {
+            Ghost.notifications.addItem({
+                type: 'success',
+                message: 'Saved',
+                status: 'passive'
+            });
+
+        },
+        saveError: function () {
+            Ghost.notifications.addItem({
+                type: 'error',
+                message: 'Something went wrong, not saved :(',
+                status: 'passive'
+            });
         }
     });
 
@@ -85,29 +122,15 @@
         },
 
         saveSettings: function () {
-            var self = this;
             this.model.save({
                 title: this.$('#blog-title').val(),
-                email: this.$('#email-address').val()
+                email: this.$('#email-address').val(),
+                logo: this.$('#logo').attr("src"),
+                icon: this.$('#icon').attr("src")
+
             }, {
-                success: function () {
-                    self.addSubview(new Ghost.Views.NotificationCollection({
-                        model: [{
-                            type: 'success',
-                            message: 'Saved',
-                            status: 'passive'
-                        }]
-                    }));
-                },
-                error: function () {
-                    self.addSubview(new Ghost.Views.NotificationCollection({
-                        model: [{
-                            type: 'error',
-                            message: 'Something went wrong, not saved :(',
-                            status: 'passive'
-                        }]
-                    }));
-                }
+                success: this.saveSuccess,
+                error: this.saveError
             });
         },
 
@@ -117,6 +140,11 @@
             var settings = this.model.toJSON();
             this.$('#blog-title').val(settings.title);
             this.$('#email-address').val(settings.email);
+        },
+
+        afterRender: function () {
+            this.$('.js-drop-zone').upload();
+            Settings.Pane.prototype.afterRender.call(this);
         }
     });
 
@@ -127,29 +155,11 @@
             'click .button-save': 'saveSettings'
         },
         saveSettings: function () {
-            var self = this;
             this.model.save({
                 description: this.$('#blog-description').val()
             }, {
-                success: function () {
-                    self.addSubview(new Ghost.Views.NotificationCollection({
-                        model: [{
-                            type: 'success',
-                            message: 'Saved',
-                            status: 'passive'
-                        }]
-                    }));
-
-                },
-                error: function () {
-                    self.addSubview(new Ghost.Views.NotificationCollection({
-                        model: [{
-                            type: 'error',
-                            message: 'Something went wrong, not saved :(',
-                            status: 'passive'
-                        }]
-                    }));
-                }
+                success: this.saveSuccess,
+                error: this.saveError
             });
         },
 
@@ -161,30 +171,116 @@
         }
     });
 
+     // ### User profile
+    Settings.user = Settings.Pane.extend({
+        id: 'user',
+
+        options: {
+            modelType: 'User'
+        },
+
+        events: {
+            'click .button-save': 'saveUser',
+            'click .button-change-password': 'changePassword'
+        },
+
+        saveUser: function () {
+            this.model.save({
+                'full_name':        this.$('#user-name').val(),
+                'email_address':    this.$('#user-email').val(),
+                'location':         this.$('#user-location').val(),
+                'url':              this.$('#user-website').val(),
+                'bio':              this.$('#user-bio').val(),
+                'profile_picture':  this.$('#user-profile-picture').attr('src'),
+                'cover_picture':    this.$('#user-cover-picture').attr('src')
+            }, {
+                success: this.saveSuccess,
+                error: this.saveError
+            });
+        },
+
+        changePassword: function (event) {
+            event.preventDefault();
+
+            var self = this,
+                email = this.$('#user-email').val(),
+                oldPassword = this.$('#user-password-old').val(),
+                newPassword = this.$('#user-password-new').val(),
+                ne2Password = this.$('#user-new-password-verification').val();
+
+            if (newPassword !== ne2Password || newPassword.length < 6 || oldPassword.length < 6) {
+                this.saveError();
+                return;
+            }
+
+            $.ajax({
+                url: '/ghost/changepw/',
+                type: 'POST',
+                data: {
+                    email: email,
+                    password: oldPassword,
+                    newpassword: newPassword,
+                    ne2password: ne2Password
+                },
+                success: function (msg) {
+                    Ghost.notifications.addItem({
+                        type: 'success',
+                        message: msg.msg,
+                        status: 'passive',
+                        id: 'success-98'
+                    });
+                    self.$('#user-password-old').val('');
+                    self.$('#user-password-new').val('');
+                    self.$('#user-new-password-verification').val('');
+                },
+                error: function (obj, string, status) {
+                    Ghost.notifications.addItem({
+                        type: 'error',
+                        message: 'Invalid username or password',
+                        status: 'passive'
+                    });
+                }
+            });
+        },
+
+        templateName: 'settings/user-profile',
+
+        beforeRender: function () {
+            var user = this.model.toJSON();
+            this.$('#user-name').val(user.full_name);
+            this.$('#user-email').val(user.email_address);
+            this.$('#user-location').val(user.location);
+            this.$('#user-website').val(user.url);
+            this.$('#user-bio').val(user.bio);
+            this.$('#user-profile-picture').attr('src', user.profile_picture);
+            this.$('#user-cover-picture').attr('src', user.cover_picture);
+        }
+    });
+
     // ### User settings
     Settings.users = Settings.Pane.extend({
-        el: '#users',
+        id: 'users',
         events: {
         }
     });
 
     // ### Appearance settings
     Settings.appearance = Settings.Pane.extend({
-        el: '#appearance',
+        id: 'appearance',
         events: {
         }
     });
 
     // ### Services settings
     Settings.services = Settings.Pane.extend({
-        el: '#services',
+        id: 'services',
         events: {
         }
     });
 
     // ### Plugins settings
     Settings.plugins = Settings.Pane.extend({
-        el: '#plugins',
+        id: 'plugins',
         events: {
         }
     });

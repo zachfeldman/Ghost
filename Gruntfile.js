@@ -114,6 +114,13 @@ var path = require('path'),
 
                 perm: {
                     src: ['core/test/unit/**/permissions_spec.js']
+                },
+
+                migrate: {
+                    src: [
+                        'core/test/unit/**/export_spec.js',
+                        'core/test/unit/**/import_spec.js'
+                    ]
                 }
             },
 
@@ -161,7 +168,7 @@ var path = require('path'),
                             "core/client/**/*.js"
                         ],
                         "except": [
-                            "!core/client/assets/**/*.js",
+                            "!core/**/vendor/**/*.js",
                             "!core/client/tpl/**/*.js"
                         ]
                     }
@@ -300,6 +307,9 @@ var path = require('path'),
 
         // Run permisisons tests only
         grunt.registerTask("test-p", ["mochacli:perm"]);
+
+        // Run migrations tests only
+        grunt.registerTask("test-m", ["mochacli:migrate"]);
 
         // Run tests and lint code
         grunt.registerTask("validate", ["jslint", "mochacli:all"]);

@@ -1,7 +1,7 @@
 // # Ghost Module
-// Defines core methods required to build the frontend
+// Defines core methods required to build the application
 
-// ## Setup Prerequisites
+// Module dependencies
 var config = require('./../config'),
     when = require('when'),
     express = require('express'),
@@ -12,10 +12,11 @@ var config = require('./../config'),
     nodefn = require('when/node/function'),
     _ = require('underscore'),
     Polyglot = require('node-polyglot'),
-
     models = require('./server/models'),
-
+    plugins = require('./server/plugins'),
     requireTree = require('./server/require-tree'),
+
+// Variables
     themePath = path.resolve(__dirname + '../../content/themes'),
     pluginPath = path.resolve(__dirname + '../../content/plugins'),
     themeDirectories = requireTree(themePath),
@@ -74,13 +75,14 @@ Ghost = function () {
         // Holds the plugin directories temporarily
         instance.pluginDirectories = {};
 
+        // Holds the persistent notifications
+        instance.notifications = [];
+
+        // Holds the available plugins
+        instance.availablePlugins = {};
+
         app = express();
-
         polyglot = new Polyglot();
-
-        // functionality
-        // load Plugins...
-        // var f = new FancyFirstChar(ghost).init();
 
         _.extend(instance, {
             app: function () { return app; },
@@ -113,40 +115,18 @@ Ghost = function () {
     return instance;
 };
 
+// Initialise the application
 Ghost.prototype.init = function () {
     var self = this;
 
     return when.join(instance.dataProvider.init(), instance.getPaths()).then(function () {
-        return self.loadPlugins();
+        return self.initPlugins();
     }, errors.logAndThrowError).then(function () {
         return self.updateSettingsCache();
     }, errors.logAndThrowError);
 };
 
-Ghost.prototype.loadPlugins = function () {
-    var self = this,
-        pluginPaths = _.values(self.paths().availablePlugins),
-        pluginPromises = [];
-
-    _.each(self.config().activePlugins, function (plugin) {
-        var match = _.find(pluginPaths, function (path) {
-            return new RegExp(plugin + '$').test(path);
-        });
-
-        if (match) {
-            pluginPromises.push(require(path.join(pluginPath, plugin)));
-        }
-    });
-
-    return when.all(pluginPromises).then(function (plugins) {
-        _.each(plugins, function (plugin) {
-            if (_.isFunction(plugin.init)) {
-                plugin.init(self);
-            }
-        });
-    }, errors.logAndThrowError);
-};
-
+// Maintain the internal cache of the settings object
 Ghost.prototype.updateSettingsCache = function (settings) {
     var self = this;
 
@@ -171,12 +151,14 @@ Ghost.prototype.updateSettingsCache = function (settings) {
 
 // ## Template utils
 
+// Compile a template for a handlebars helper
 Ghost.prototype.compileTemplate = function (templatePath) {
     return nodefn.call(fs.readFile, templatePath).then(function (templateContents) {
         return hbs.handlebars.compile(templateContents.toString());
     }, errors.logAndThrowError);
 };
 
+// Load a template for a handlebars helper
 Ghost.prototype.loadTemplate = function (name) {
     var self = this,
         templateFileName = name + '.hbs',
@@ -198,38 +180,12 @@ Ghost.prototype.loadTemplate = function (name) {
     return deferred.promise;
 };
 
-/**
- * @param  {string}   name
- * @param  {Function} fn
- * @return {method}  hbs.registerHelper
- */
+// Register a handlebars helper for themes
 Ghost.prototype.registerThemeHelper = function (name, fn) {
     hbs.registerHelper(name, fn);
 };
 
-/**
- * @param  {string}   name
- * @param  {Function} fn
- * @return {*}
- */
-Ghost.prototype.registerTheme = function (name, fn) {
-    return this;
-};
-
-/**
- * @param  {string}   name
- * @param  {Function} fn
- * @return {*}
- */
-Ghost.prototype.registerPlugin = function (name, fn) {
-    return this;
-};
-
-/**
- * @param  {string}   name
- * @param  {integer}  priority
- * @param  {Function} fn
- */
+// Register a new filter callback function
 Ghost.prototype.registerFilter = function (name, priority, fn) {
     // Curry the priority optional parameter to a default of 5
     if (_.isFunction(priority)) {
@@ -243,12 +199,22 @@ Ghost.prototype.registerFilter = function (name, priority, fn) {
     this.filterCallbacks[name][priority].push(fn);
 };
 
-/**
- * @param  {string}   name     [description]
- * @param  {*}   args
- * @param  {Function} callback
- * @return {method} callback
- */
+// Unregister a filter callback function
+Ghost.prototype.unregisterFilter = function (name, priority, fn) {
+    // Curry the priority optional parameter to a default of 5
+    if (_.isFunction(priority)) {
+        fn = priority;
+        priority = defaults.filterPriority;
+    }
+
+    // Check if it even exists
+    if (this.filterCallbacks[name] && this.filterCallbacks[name][priority]) {
+        // Remove the function from the list of filter funcs
+        this.filterCallbacks[name][priority] = _.without(this.filterCallbacks[name][priority], fn);
+    }
+};
+
+// Execute filter functions in priority order
 Ghost.prototype.doFilter = function (name, args, callback) {
     var callbacks = this.filterCallbacks[name];
 
@@ -277,12 +243,19 @@ Ghost.prototype.doFilter = function (name, args, callback) {
     callback(args);
 };
 
-/**
- * Initialise Theme
- *
- * @todo  Tod (?) Old comment
- * @param  {Object} app
- */
+// Initialise plugins.  Will load from config.activePlugins by default
+Ghost.prototype.initPlugins = function (pluginsToLoad) {
+    pluginsToLoad = pluginsToLoad || config.activePlugins;
+
+    var self = this;
+
+    return plugins.init(this, pluginsToLoad).then(function (loadedPlugins) {
+        // Extend the loadedPlugins onto the available plugins
+        _.extend(self.availablePlugins, loadedPlugins);
+    }, errors.logAndThrowError);
+};
+
+// Initialise Theme or admin
 Ghost.prototype.initTheme = function (app) {
     var self = this;
     return function initTheme(req, res, next) {
