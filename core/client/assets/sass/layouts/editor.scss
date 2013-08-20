@@ -225,9 +225,14 @@
 		}
 
 		.cm-string,
-		.cm-link,
-		.cm-comment,
-		.cm-quote {color:#000;}
+        .cm-link,
+        .cm-comment,
+        .cm-quote,
+        .cm-variable-2,
+        .cm-variable-3,
+        .cm-keyword,
+        .cm-number,
+        .cm-atom {color:#000;}
 
 	}
 
@@ -250,6 +255,12 @@
 			left:0;
 			padding: 60px 40px 40px 40px;
 			overflow: auto;
+
+			// Breaking for long words in preview region
+			word-break: break-word;
+			word-break: break-all;
+			-webkit-hyphens: auto;
+			hyphens: auto;
 
 			// Tweak padding for smaller screens
 			@include breakpoint($netbook) {padding-top: 20px;}
@@ -297,7 +308,6 @@
 		text-decoration: underline;
 	}
 	p {
-		text-indent: 0;
 		margin: 1.2em 0 1.6em;
 		&:first-child {
 			margin-top:0;
@@ -337,13 +347,10 @@
         }
     }
 	img {
-		width: 100%;
+		max-width: 100%;
 		height: auto;
+        margin: 0 auto;
 	}
-    // prevent uploaded image from being streched in editor
-    .pre-image-uploader img {
-        width: auto;
-    }
 
 }
 
