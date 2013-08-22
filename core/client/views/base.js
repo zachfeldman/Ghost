@@ -99,8 +99,22 @@
             }
 
             return message;
-        }
+        },
 
+        // Getting URL vars
+        getUrlVariables: function () {
+            var vars = [],
+                hash,
+                hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&'),
+                i;
+
+            for (i = 0; i < hashes.length; i += 1) {
+                hash = hashes[i].split('=');
+                vars.push(hash[0]);
+                vars[hash[0]] = hash[1];
+            }
+            return vars;
+        }
     });
 
     /**
@@ -240,7 +254,7 @@
         },
         afterRender: function () {
             this.$(".modal-content").html(this.addSubview(new Ghost.Views.Modal.ContentView({model: this.model})).render().el);
-            this.$el.children(".js-modal").center().css("max-height", $(window).height() - 120); // same as resize(), but the debounce causes init lag
+            this.$el.children(".js-modal").center({animate: false}).css("max-height", $(window).height() - 120); // same as resize(), but the debounce causes init lag
             this.$el.addClass("active dark");
 
             if (document.body.style.webkitFilter !== undefined) { // Detect webkit filters

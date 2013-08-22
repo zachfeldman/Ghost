@@ -24,7 +24,13 @@
         },
 
         centerOnResize: _.debounce(function (e) {
-            $(".js-login-container").center();
+            var container = $(".js-login-container");
+            container.css({
+                'position': 'relative'
+            }).animate({
+                'top': Math.round($(window).height() / 2) - container.outerHeight() / 2 + 'px'
+            });
+            $(window).trigger("centered");
         }, 100),
 
         remove: function () {
@@ -45,14 +51,17 @@
         submitHandler: function (event) {
             event.preventDefault();
             var email = this.$el.find('.email').val(),
-                password = this.$el.find('.password').val();
+                password = this.$el.find('.password').val(),
+                redirect = this.getUrlVariables().r,
+                self = this;
 
             $.ajax({
                 url: '/ghost/login/',
                 type: 'POST',
                 data: {
                     email: email,
-                    password: password
+                    password: password,
+                    redirect: redirect
                 },
                 success: function (msg) {
                     window.location.href = msg.redirect;
@@ -60,7 +69,7 @@
                 error: function (obj, string, status) {
                     Ghost.notifications.addItem({
                         type: 'error',
-                        message: obj.responseText,
+                        message: self.getRequestErrorMessage(obj),
                         status: 'passive'
                     });
                 }
@@ -79,7 +88,8 @@
         submitHandler: function (event) {
             event.preventDefault();
             var email = this.$el.find('.email').val(),
-                password = this.$el.find('.password').val();
+                password = this.$el.find('.password').val(),
+                self = this;
 
             $.ajax({
                 url: '/ghost/signup/',
@@ -92,10 +102,9 @@
                     window.location.href = msg.redirect;
                 },
                 error: function (obj, string, status) {
-                    var msgobj = $.parseJSON(obj.responseText);
                     Ghost.notifications.addItem({
                         type: 'error',
-                        message: msgobj.message,
+                        message: self.getRequestErrorMessage(obj),
                         status: 'passive'
                     });
                 }

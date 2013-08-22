@@ -14,17 +14,21 @@ var express = require('express'),
     admin = require('./core/server/controllers/admin'),
     frontend = require('./core/server/controllers/frontend'),
     api = require('./core/server/api'),
-    flash = require('connect-flash'),
     Ghost = require('./core/ghost'),
     I18n = require('./core/shared/lang/i18n'),
     filters = require('./core/server/filters'),
     helpers = require('./core/server/helpers'),
     packageInfo = require('./package.json'),
+    Validator = require('validator').Validator,
+    v = new Validator(),
 
 // Variables
     loading = when.defer(),
     ghost = new Ghost();
 
+v.error = function () {
+    return false;
+};
 
 // ##Custom Middleware
 
@@ -34,13 +38,63 @@ var express = require('express'),
 function auth(req, res, next) {
     if (!req.session.user) {
         var path = req.path.replace(/^\/ghost\/?/gi, ''),
-            redirect = '';
+            redirect = '',
+            msg;
 
         if (path !== '') {
-            req.flash('warn', "Please login");
+            msg = {
+                type: 'error',
+                message: 'Please Log In',
+                status: 'passive',
+                id: 'failedauth'
+            };
+            // let's only add the notification once
+            if (!_.contains(_.pluck(ghost.notifications, 'id'), 'failedauth')) {
+                ghost.notifications.push(msg);
+            }
             redirect = '?r=' + encodeURIComponent(path);
         }
         return res.redirect('/ghost/login/' + redirect);
+    }
+
+    next();
+}
+
+
+// While we're here, let's clean up on aisle 5
+// That being ghost.notifications, and let's remove the passives from there
+// plus the local messages, as the have already been added at this point
+// otherwise they'd appear one too many times
+function cleanNotifications(req, res, next) {
+    ghost.notifications = _.reject(ghost.notifications, function (notification) {
+        return notification.status === 'passive';
+    });
+    next();
+}
+
+
+/**
+ * Validation middleware
+ * Checks on signup whether email is actually a valid email address
+ * and if password is at least 8 characters long
+ *
+ * To change validation rules, see https://github.com/chriso/node-validator
+ *
+ * @author  javorszky
+ * @issue   https://github.com/TryGhost/Ghost/issues/374
+ */
+function signupValidate(req, res, next) {
+    var email = req.body.email,
+        password = req.body.password;
+
+
+    if (!v.check(email).isEmail()) {
+        res.json(401, {error: "Please check your email address. It does not seem to be valid."});
+        return;
+    }
+    if (!v.check(password).len(7)) {
+        res.json(401, {error: 'Your password is not long enough. It must be at least 7 chars long.'});
+        return;
     }
     next();
 }
@@ -133,7 +187,6 @@ ghost.app().configure(function () {
     ghost.app().use(express.cookieParser('try-ghost'));
     ghost.app().use(express.cookieSession({ cookie: { maxAge: 60000000 }}));
     ghost.app().use(ghost.initTheme(ghost.app()));
-    ghost.app().use(flash());
 
     if (process.env.NODE_ENV !== "development") {
         ghost.app().use(express.logger());
@@ -155,6 +208,8 @@ when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(
 
     // post init config
     ghost.app().use(ghostLocals);
+    // because science
+    ghost.app().use(cleanNotifications);
 
 
     // ## Routing
@@ -186,7 +241,7 @@ when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(
     ghost.app().get('/ghost/login/', admin.login);
     ghost.app().get('/ghost/signup/', admin.signup);
     ghost.app().post('/ghost/login/', admin.auth);
-    ghost.app().post('/ghost/signup/', admin.doRegister);
+    ghost.app().post('/ghost/signup/', signupValidate, admin.doRegister);
     ghost.app().post('/ghost/changepw/', auth, admin.changepw);
     ghost.app().get('/ghost/editor/:id', auth, admin.editor);
     ghost.app().get('/ghost/editor', auth, admin.editor);

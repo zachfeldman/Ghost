@@ -95,9 +95,10 @@ adminControllers = {
     'auth': function (req, res) {
         api.users.check({email: req.body.email, pw: req.body.password}).then(function (user) {
             req.session.user = user.id;
-            res.json(200, {redirect: req.query.r ? '/ghost/' + req.query.r : '/ghost/'});
+            res.json(200, {redirect: req.body.redirect ? '/ghost/'
+                + decodeURIComponent(req.body.redirect) : '/ghost/'});
         }, function (error) {
-            res.send(401, error.message);
+            res.json(401, {error: error.message});
         });
     },
     changepw: function (req, res) {
@@ -124,26 +125,32 @@ adminControllers = {
         var email = req.body.email,
             password = req.body.password;
 
-        if (email !== '' && password.length > 5) {
-            api.users.add({
-                email_address: email,
-                password: password
-            }).then(function (user) {
-                // Automatically log the new user in, unless created by an existing account
-                if (req.session.user === undefined) {
-                    req.session.user = user.id;
-                }
-                res.json(200, {redirect: '/ghost/'});
-            }, function (error) {
-                res.json(401, {message: error.message});
-            });
-        } else {
-            res.json(400, {message: 'The password is too short. Have at least 6 characters in there'});
-        }
+        api.users.add({
+            email_address: email,
+            password: password
+        }).then(function (user) {
+            if (req.session.user === undefined) {
+                req.session.user = user.id;
+            }
+            res.json(200, {redirect: '/ghost/'});
+        }, function (error) {
+            res.json(401, {error: error.message});
+        });
+
     },
     'logout': function (req, res) {
         delete req.session.user;
-        req.flash('success', "You were successfully logged out");
+        var msg = {
+            type: 'success',
+            message: 'You were successfully logged out',
+            status: 'passive',
+            id: 'successlogout'
+        };
+        // let's only add the notification once
+        if (!_.contains(_.pluck(ghost.notifications, 'id'), 'successlogout')) {
+            ghost.notifications.push(msg);
+        }
+
         res.redirect('/ghost/login/');
     },
     'index': function (req, res) {
