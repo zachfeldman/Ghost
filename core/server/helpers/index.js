@@ -17,7 +17,7 @@ coreHelpers = function (ghost) {
      * @param  {*} options
      * @return {Object} A Moment time / date object
      */
-    ghost.registerThemeHelper('dateFormat', function (context, options) {
+    ghost.registerThemeHelper('date', function (context, options) {
         var f = options.hash.format || "MMM Do, YYYY",
             timeago = options.hash.timeago,
             date;
@@ -54,6 +54,64 @@ coreHelpers = function (ghost) {
         }
 
         return new hbs.handlebars.SafeString(this.content);
+    });
+
+
+    // ### Excerpt Helper
+    //
+    // *Usage example:*
+    // `{{excerpt}}`
+    // `{{excerpt words=50}}`
+    // `{{excerpt characters=256}}`
+    //
+    // Attempts to remove all HTML from the string, and then shortens the result according to the provided option.
+    //
+    // Defaults to words=50
+    //
+    // **returns** SafeString truncated, HTML-free content.
+    //
+    ghost.registerThemeHelper('excerpt', function (options) {
+        var truncateOptions = (options || {}).hash || {},
+            excerpt;
+
+        truncateOptions = _.pick(truncateOptions, ["words", "characters"]);
+
+        /*jslint regexp:true */
+        excerpt = String(this.content).replace(/<\/?[^>]+>/gi, "");
+        /*jslint regexp:false */
+
+        if (!truncateOptions.words && !truncateOptions.characters) {
+            truncateOptions.words = 50;
+        }
+
+        return new hbs.handlebars.SafeString(
+            downsize(excerpt, truncateOptions)
+        );
+    });
+
+
+    ghost.registerThemeHelper('bodyclass', function (options) {
+        var classes = [];
+        if (!this.path || this.path === '/' || this.path === '') {
+            classes.push('home');
+        } else {
+            classes.push('post');
+        }
+
+        return ghost.doFilter('bodyclass', classes, function (classes) {
+            var classString = _.reduce(classes, function (memo, item) { return memo + ' ' + item; }, '');
+            return new hbs.handlebars.SafeString(classString.trim());
+        });
+    });
+
+    ghost.registerThemeHelper('postclass', function (options) {
+        var classes = ['post'];
+
+        // TODO: add tag names once we have them
+        return ghost.doFilter('postclass', classes, function (classes) {
+            var classString = _.reduce(classes, function (memo, item) { return memo + ' ' + item; }, '');
+            return new hbs.handlebars.SafeString(classString.trim());
+        });
     });
 
 
@@ -168,10 +226,10 @@ coreHelpers = function (ghost) {
     });
 
     // ### Pagination Helper
-    // `{{paginate}}`
+    // `{{pagination}}`
     // Outputs previous and next buttons, along with info about the current page
     paginationHelper = ghost.loadTemplate('pagination').then(function (templateFn) {
-        ghost.registerThemeHelper('paginate', function (options) {
+        ghost.registerThemeHelper('pagination', function (options) {
             if (!_.isObject(this.pagination) || _.isFunction(this.pagination)) {
                 errors.logAndThrowError('pagination data is not an object or is a function');
                 return;
