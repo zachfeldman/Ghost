@@ -124,10 +124,10 @@ adminControllers = {
             oldpw: req.body.password,
             newpw: req.body.newpassword,
             ne2pw: req.body.ne2password
-        }).then(function (user) {
+        }).then(function () {
             res.json(200, {msg: 'Password changed successfully'});
         }, function (error) {
-            res.send(401);
+            res.send(401, {error: error.message});
         });
 
     },
@@ -159,7 +159,7 @@ adminControllers = {
         delete req.session.user;
         var msg = {
             type: 'success',
-            message: 'You were successfully logged out',
+            message: 'You were successfully signed out',
             status: 'passive',
             id: 'successlogout'
         };
@@ -168,7 +168,7 @@ adminControllers = {
             ghost.notifications.push(msg);
         }
 
-        res.redirect('/ghost/login/');
+        res.redirect('/ghost/signin/');
     },
     'index': function (req, res) {
         res.render('dashboard', {
@@ -310,7 +310,7 @@ adminControllers = {
 
                     return api.notifications.add(notification).then(function () {
                         delete req.session.user;
-                        res.redirect('/ghost/login/');
+                        res.redirect('/ghost/signin/');
                     });
 
                 }, function importFailure(error) {

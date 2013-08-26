@@ -60,6 +60,28 @@ describe('Core Helpers', function () {
             rendered.string.should.equal("<p>Hello <strong>Wo</strong></p>");
         });
     });
+    
+    describe('Author Helper', function () {
+        
+        it('has loaded author helper', function () {
+            should.exist(handlebars.helpers.author);
+        });
+        
+        it("Returns the full name of the author from the context",function() {
+            var content = {"author":{"full_name":"abc123"}},
+                result = handlebars.helpers.author.call(content);
+
+            String(result).should.equal("abc123");
+        });
+        
+        it("Returns a blank string where author data is missing",function() {
+            var content = {"author":null},
+                result = handlebars.helpers.author.call(content);
+
+            String(result).should.equal("");
+        });
+        
+    });
 
     describe('Excerpt Helper', function () {
 
@@ -118,40 +140,64 @@ describe('Core Helpers', function () {
         });
     });
 
-    describe('Bodyclass Helper', function () {
-        it('has loaded bodyclass helper', function () {
-            should.exist(handlebars.helpers.bodyclass);
+    describe('body_class Helper', function () {
+        it('has loaded body_class helper', function () {
+            should.exist(handlebars.helpers.body_class);
         });
 
         it('can render class string', function () {
-            var rendered = handlebars.helpers.bodyclass.call({});
+            var rendered = handlebars.helpers.body_class.call({});
             should.exist(rendered);
 
-            rendered.string.should.equal('home');
+            rendered.string.should.equal('home-template');
         });
 
         it('can render class string for context', function () {
-            var rendered1 = handlebars.helpers.bodyclass.call({path: '/'}),
-                rendered2 = handlebars.helpers.bodyclass.call({path: '/a-post-title'});
+            var rendered1 = handlebars.helpers.body_class.call({path: '/'}),
+                rendered2 = handlebars.helpers.body_class.call({path: '/a-post-title'});
 
             should.exist(rendered1);
             should.exist(rendered2);
 
-            rendered1.string.should.equal('home');
-            rendered2.string.should.equal('post');
+            rendered1.string.should.equal('home-template');
+            rendered2.string.should.equal('post-template');
         });
     });
 
-    describe('Postclass Helper', function () {
+    describe('post_class Helper', function () {
         it('has loaded postclass helper', function () {
-            should.exist(handlebars.helpers.postclass);
+            should.exist(handlebars.helpers.post_class);
         });
 
         it('can render class string', function () {
-            var rendered = handlebars.helpers.postclass.call({});
+            var rendered = handlebars.helpers.post_class.call({});
             should.exist(rendered);
 
             rendered.string.should.equal('post');
+        });
+    });
+
+    describe('ghost_head Helper', function () {
+        it('has loaded ghost_head helper', function () {
+            should.exist(handlebars.helpers.ghost_head);
+        });
+
+        it('returns meta tag string', function () {
+            var rendered = handlebars.helpers.ghost_head.call({version: "0.3"});
+            should.exist(rendered);
+            rendered.string.should.equal('<meta name="generator" content="Ghost 0.3" />');
+        });
+    });
+
+    describe('ghost_foot Helper', function () {
+        it('has loaded ghost_foot helper', function () {
+            should.exist(handlebars.helpers.ghost_foot);
+        });
+
+        it('returns meta tag string', function () {
+            var rendered = handlebars.helpers.ghost_foot.call();
+            should.exist(rendered);
+            rendered.string.should.equal('<script src="/shared/vendor/jquery/jquery.js"></script>');
         });
     });
 
@@ -202,7 +248,8 @@ describe('Core Helpers', function () {
             helpers.loadCoreHelpers(ghost).then(function () {
                 rendered = handlebars.helpers.pagination.call({pagination: {page: 1, prev: undefined, next: undefined, limit: 15, total: 8, pages: 1}});
                 should.exist(rendered);
-                rendered.string.should.equal('\n<nav id="pagination" role="pagination">\n    \n    <div class="page-number">Page 1<span class="extended"> of 1</span></div>\n    \n</nav>');
+                // strip out carriage returns and compare.
+                rendered.string.replace(/\r/g, '').should.equal('\n<nav class="pagination" role="pagination">\n    \n    <div class="page-number">Page 1<span class="extended"> of 1</span></div>\n    \n</nav>');
                 done();
             }).then(null, done);
         });
@@ -212,7 +259,8 @@ describe('Core Helpers', function () {
             helpers.loadCoreHelpers(ghost).then(function () {
                 rendered = handlebars.helpers.pagination.call({pagination: {page: 1, prev: undefined, next: 2, limit: 15, total: 8, pages: 3}});
                 should.exist(rendered);
-                rendered.string.should.equal('\n<nav id="pagination" role="pagination">\n    \n        <div class="previous-page"><a href="/page/2/">Older Posts →</a></div>\n    \n    <div class="page-number">Page 1<span class="extended"> of 3</span></div>\n    \n</nav>');
+                // strip out carriage returns and compare.
+                rendered.string.replace(/\r/g, '').should.equal('\n<nav class="pagination" role="pagination">\n    \n        <div class="previous-page"><a href="/page/2/">Older Posts →</a></div>\n    \n    <div class="page-number">Page 1<span class="extended"> of 3</span></div>\n    \n</nav>');
                 done();
             }).then(null, done);
         });
@@ -222,7 +270,8 @@ describe('Core Helpers', function () {
             helpers.loadCoreHelpers(ghost).then(function () {
                 rendered = handlebars.helpers.pagination.call({pagination: {page: 2, prev: 1, next: 3, limit: 15, total: 8, pages: 3}});
                 should.exist(rendered);
-                rendered.string.should.equal('\n<nav id="pagination" role="pagination">\n    \n        <div class="previous-page"><a href="/page/3/">Older Posts →</a></div>\n    \n    <div class="page-number">Page 2<span class="extended"> of 3</span></div>\n    \n        <div class="next-page"><a href="/page/1/">← Newer Posts</a></div>\n    \n</nav>');
+                // strip out carriage returns and compare.
+                rendered.string.replace(/\r/g, '').should.equal('\n<nav class="pagination" role="pagination">\n    \n        <div class="previous-page"><a href="/page/3/">Older Posts →</a></div>\n    \n    <div class="page-number">Page 2<span class="extended"> of 3</span></div>\n    \n        <div class="next-page"><a href="/page/1/">← Newer Posts</a></div>\n    \n</nav>');
                 done();
             }).then(null, done);
         });
@@ -232,7 +281,8 @@ describe('Core Helpers', function () {
             helpers.loadCoreHelpers(ghost).then(function () {
                 rendered = handlebars.helpers.pagination.call({pagination: {page: 3, prev: 2, next: undefined, limit: 15, total: 8, pages: 3}});
                 should.exist(rendered);
-                rendered.string.should.equal('\n<nav id="pagination" role="pagination">\n    \n    <div class="page-number">Page 3<span class="extended"> of 3</span></div>\n    \n        <div class="next-page"><a href="/page/2/">← Newer Posts</a></div>\n    \n</nav>');
+                // strip out carriage returns and compare.
+                rendered.string.replace(/\r/g, '').should.equal('\n<nav class="pagination" role="pagination">\n    \n    <div class="page-number">Page 3<span class="extended"> of 3</span></div>\n    \n        <div class="next-page"><a href="/page/2/">← Newer Posts</a></div>\n    \n</nav>');
                 done();
             }).then(null, done);
         });

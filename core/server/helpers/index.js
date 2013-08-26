@@ -29,6 +29,19 @@ coreHelpers = function (ghost) {
         return date;
     });
 
+
+    // ### Author Helper
+    // 
+    // *Usage example:*
+    // `{{author}}`
+    // 
+    // Returns the full name of the author of a given post, or a blank string
+    // if the author could not be determined.
+    //
+    ghost.registerThemeHelper('author', function (context, options) {
+        return this.author ? this.author.full_name : "";
+    });
+
     // ### Content Helper
     // 
     // *Usage example:*
@@ -90,31 +103,49 @@ coreHelpers = function (ghost) {
     });
 
 
-    ghost.registerThemeHelper('bodyclass', function (options) {
+    ghost.registerThemeHelper('body_class', function (options) {
         var classes = [];
         if (!this.path || this.path === '/' || this.path === '') {
-            classes.push('home');
+            classes.push('home-template');
         } else {
-            classes.push('post');
+            classes.push('post-template');
         }
 
-        return ghost.doFilter('bodyclass', classes, function (classes) {
+        return ghost.doFilter('body_class', classes, function (classes) {
             var classString = _.reduce(classes, function (memo, item) { return memo + ' ' + item; }, '');
             return new hbs.handlebars.SafeString(classString.trim());
         });
     });
 
-    ghost.registerThemeHelper('postclass', function (options) {
+    ghost.registerThemeHelper('post_class', function (options) {
         var classes = ['post'];
 
         // TODO: add tag names once we have them
-        return ghost.doFilter('postclass', classes, function (classes) {
+        return ghost.doFilter('post_class', classes, function (classes) {
             var classString = _.reduce(classes, function (memo, item) { return memo + ' ' + item; }, '');
             return new hbs.handlebars.SafeString(classString.trim());
         });
     });
 
+    ghost.registerThemeHelper('ghost_head', function (options) {
+        var head = [];
+        head.push('<meta name="generator" content="Ghost ' + this.version + '" />');
 
+        return ghost.doFilter('ghost_head', head, function (head) {
+            var headString = _.reduce(head, function (memo, item) { return memo + ' ' + item; }, '');
+            return new hbs.handlebars.SafeString(headString.trim());
+        });
+    });
+
+    ghost.registerThemeHelper('ghost_foot', function (options) {
+        var foot = [];
+        foot.push('<script src="/shared/vendor/jquery/jquery.js"></script>');
+
+        return ghost.doFilter('ghost_foot', foot, function (foot) {
+            var footString = _.reduce(foot, function (memo, item) { return memo + ' ' + item; }, '');
+            return new hbs.handlebars.SafeString(footString.trim());
+        });
+    });
     /**
      * [ description]
      *
@@ -253,6 +284,12 @@ coreHelpers = function (ghost) {
         });
     });
 
+    ghost.registerThemeHelper('helperMissing', function (arg) {
+        if (arguments.length === 2) {
+            return undefined;
+        }
+        errors.logError("Missing helper: '" + arg + "'");
+    });
     // Return once the template-driven helpers have loaded
     return when.join(
         navHelper,

@@ -19,16 +19,10 @@ var express = require('express'),
     filters = require('./core/server/filters'),
     helpers = require('./core/server/helpers'),
     packageInfo = require('./package.json'),
-    Validator = require('validator').Validator,
-    v = new Validator(),
 
 // Variables
     loading = when.defer(),
     ghost = new Ghost();
-
-v.error = function () {
-    return false;
-};
 
 // ##Custom Middleware
 
@@ -44,7 +38,7 @@ function auth(req, res, next) {
         if (path !== '') {
             msg = {
                 type: 'error',
-                message: 'Please Log In',
+                message: 'Please Sign In',
                 status: 'passive',
                 id: 'failedauth'
             };
@@ -54,16 +48,26 @@ function auth(req, res, next) {
             }
             redirect = '?r=' + encodeURIComponent(path);
         }
-        return res.redirect('/ghost/login/' + redirect);
+        return res.redirect('/ghost/signin/' + redirect);
     }
 
     next();
 }
 
 
+// Check if we're logged in, and if so, redirect people back to dashboard
+// Login and signup forms in particular
+function redirectToDashboard(req, res, next) {
+    if (req.session.user) {
+        return res.redirect('/ghost/');
+    }
+
+    next();
+}
+
 // While we're here, let's clean up on aisle 5
 // That being ghost.notifications, and let's remove the passives from there
-// plus the local messages, as the have already been added at this point
+// plus the local messages, as they have already been added at this point
 // otherwise they'd appear one too many times
 function cleanNotifications(req, res, next) {
     ghost.notifications = _.reject(ghost.notifications, function (notification) {
@@ -72,40 +76,12 @@ function cleanNotifications(req, res, next) {
     next();
 }
 
-
-/**
- * Validation middleware
- * Checks on signup whether email is actually a valid email address
- * and if password is at least 8 characters long
- *
- * To change validation rules, see https://github.com/chriso/node-validator
- *
- * @author  javorszky
- * @issue   https://github.com/TryGhost/Ghost/issues/374
- */
-function signupValidate(req, res, next) {
-    var email = req.body.email,
-        password = req.body.password;
-
-
-    if (!v.check(email).isEmail()) {
-        res.json(401, {error: "Please check your email address. It does not seem to be valid."});
-        return;
-    }
-    if (!v.check(password).len(7)) {
-        res.json(401, {error: 'Your password is not long enough. It must be at least 7 chars long.'});
-        return;
-    }
-    next();
-}
-
 // ## AuthApi Middleware
 // Authenticate a request to the API by responding with a 401 and json error details
 function authAPI(req, res, next) {
     if (!req.session.user) {
         // TODO: standardize error format/codes/messages
-        var err = { code: 42, message: 'Please login' };
-        res.json(401, { error: err });
+        res.json(401, { error: 'Please sign in' });
         return;
     }
 
@@ -177,40 +153,37 @@ function disableCachedResult(req, res, next) {
     next();
 }
 
-// ##Configuration
-ghost.app().configure(function () {
-    ghost.app().use(isGhostAdmin);
-    ghost.app().use(express.favicon(__dirname + '/content/images/favicon.ico'));
-    ghost.app().use(I18n.load(ghost));
-    ghost.app().use(express.bodyParser({}));
-    ghost.app().use(express.bodyParser({uploadDir: __dirname + '/content/images'}));
-    ghost.app().use(express.cookieParser('try-ghost'));
-    ghost.app().use(express.cookieSession({ cookie: { maxAge: 60000000 }}));
-    ghost.app().use(ghost.initTheme(ghost.app()));
-
-    if (process.env.NODE_ENV !== "development") {
-        ghost.app().use(express.logger());
-        ghost.app().use(express.errorHandler({ dumpExceptions: false, showStack: false }));
-    }
-});
-
-// Development only configuration
-ghost.app().configure("development", function () {
-    ghost.app().use(express.errorHandler({ dumpExceptions: true, showStack: true }));
-    ghost.app().use(express.logger('dev'));
-});
-
-
 // Expose the promise we will resolve after our pre-loading
 ghost.loaded = loading.promise;
 
 when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(ghost)]).then(function () {
 
+    // ##Configuration
+    ghost.app().configure(function () {
+        ghost.app().use(isGhostAdmin);
+        ghost.app().use(express.favicon(__dirname + '/content/images/favicon.ico'));
+        ghost.app().use(I18n.load(ghost));
+        ghost.app().use(express.bodyParser({}));
+        ghost.app().use(express.bodyParser({uploadDir: __dirname + '/content/images'}));
+        ghost.app().use(express.cookieParser(ghost.dbHash));
+        ghost.app().use(express.cookieSession({ cookie: { maxAge: 60000000 }}));
+        ghost.app().use(ghost.initTheme(ghost.app()));
+        if (process.env.NODE_ENV !== "development") {
+            ghost.app().use(express.logger());
+            ghost.app().use(express.errorHandler({ dumpExceptions: false, showStack: false }));
+        }
+    });
+
+    // Development only configuration
+    ghost.app().configure("development", function () {
+        ghost.app().use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+        ghost.app().use(express.logger('dev'));
+    });
+
     // post init config
     ghost.app().use(ghostLocals);
-    // because science
+    // So on every request we actually clean out reduntant passive notifications from the server side
     ghost.app().use(cleanNotifications);
-
 
     // ## Routing
 
@@ -237,11 +210,17 @@ when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(
 
     // ### Admin routes
     /* TODO: put these somewhere in admin */
-    ghost.app().get(/^\/logout\/?$/, admin.logout);
-    ghost.app().get('/ghost/login/', admin.login);
-    ghost.app().get('/ghost/signup/', admin.signup);
-    ghost.app().post('/ghost/login/', admin.auth);
-    ghost.app().post('/ghost/signup/', signupValidate, admin.doRegister);
+    ghost.app().get(/^\/logout\/?$/, function redirect(req, res) {
+        res.redirect(301, '/signout/');
+    });
+    ghost.app().get(/^\/signout\/?$/, admin.logout);
+    ghost.app().get('/ghost/login/', function redirect(req, res) {
+        res.redirect(301, '/ghost/signin/');
+    });
+    ghost.app().get('/ghost/signin/', redirectToDashboard, admin.login);
+    ghost.app().get('/ghost/signup/', redirectToDashboard, admin.signup);
+    ghost.app().post('/ghost/signin/', admin.auth);
+    ghost.app().post('/ghost/signup/', admin.doRegister);
     ghost.app().post('/ghost/changepw/', auth, admin.changepw);
     ghost.app().get('/ghost/editor/:id', auth, admin.editor);
     ghost.app().get('/ghost/editor', auth, admin.editor);
@@ -252,7 +231,7 @@ when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(
     ghost.app().post('/ghost/debug/db/import/', auth, admin.debug['import']);
     ghost.app().get('/ghost/debug/db/reset/', auth, admin.debug.reset);
     ghost.app().post('/ghost/upload', admin.uploader);
-    ghost.app().get(/^\/(ghost$|(ghost-admin|admin|wp-admin|dashboard|login)\/?)/, auth, function (req, res) {
+    ghost.app().get(/^\/(ghost$|(ghost-admin|admin|wp-admin|dashboard|signin)\/?)/, auth, function (req, res) {
         res.redirect('/ghost/');
     });
     ghost.app().get('/ghost/', auth, admin.index);

@@ -239,7 +239,8 @@
         .cm-comment,
         .cm-quote,
         .cm-number,
-        .cm-atom {
+        .cm-atom,
+        .cm-tag {
             color: #000;
             font-weight: bold;
         }
@@ -265,6 +266,8 @@
             left: 0;
             padding: 60px 40px 40px 40px;
             overflow: auto;
+            word-break: break-word;
+            hyphens: auto;
 
             // Tweak padding for smaller screens
             @include breakpoint($netbook) {padding-top: 20px;}

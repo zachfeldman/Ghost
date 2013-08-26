@@ -13,6 +13,12 @@ Post = GhostBookshelf.Model.extend({
 
     tableName: 'posts',
 
+    permittedAttributes: [
+        'id', 'uuid', 'title', 'slug', 'content_raw', 'content', 'meta_title', 'meta_description', 'meta_keywords',
+        'featured', 'image', 'status', 'language', 'author_id', 'created_at', 'created_by', 'updated_at', 'updated_by',
+        'published_at', 'published_by'
+    ],
+
     hasTimestamps: true,
 
     defaults: function () {
@@ -26,12 +32,21 @@ Post = GhostBookshelf.Model.extend({
     initialize: function () {
         this.on('creating', this.creating, this);
         this.on('saving', this.saving, this);
+        this.on('saving', this.validate, this);
+    },
+
+    validate: function () {
+        GhostBookshelf.validator.check(this.get('title'), "Post title cannot be blank").notEmpty();
+
+        return true;
     },
 
     saving: function () {
-        if (!this.get('title')) {
-            throw new Error('Post title cannot be blank');
-        }
+        // Deal with the related data here
+
+        // Remove any properties which don't belong on the post model
+        this.attributes = this.pick(this.permittedAttributes);
+
         this.set('content', converter.makeHtml(this.get('content_raw')));
 
         if (this.hasChanged('status') && this.get('status') === 'published') {
@@ -45,6 +60,7 @@ Post = GhostBookshelf.Model.extend({
     },
 
     creating: function () {
+        // set any dynamic default properties
         var self = this;
         if (!this.get('created_by')) {
             this.set('created_by', 1);
@@ -109,6 +125,10 @@ Post = GhostBookshelf.Model.extend({
         slug = /^(ghost|ghost\-admin|admin|wp\-admin|dashboard|login|archive|archives|category|categories|tag|tags|page|pages|post|posts)$/g
             .test(slug) ? slug + '-post' : slug;
 
+        //if slug is empty after trimming use "post"
+        if (!slug) {
+            slug = "post";
+        }
         // Test for duplicate slugs.
         return checkIfSlugExists(slug);
     },
@@ -122,6 +142,22 @@ Post = GhostBookshelf.Model.extend({
     }
 
 }, {
+
+    // #### findAll
+    // Extends base model findAll to eager-fetch author and user relationships.
+    findAll:  function (options) {
+        options = options || {};
+        options.withRelated = [ "author", "user" ];
+        return GhostBookshelf.Model.findAll.call(this, options);
+    },
+
+    // #### findOne
+    // Extends base model findOne to eager-fetch author and user relationships.
+    findOne: function (args, options) {
+        options = options || {};
+        options.withRelated = [ "author", "user" ];
+        return GhostBookshelf.Model.findOne.call(this, args, options);
+    },
 
      // #### findPage
      // Find results by page - returns an object containing the
@@ -172,6 +208,8 @@ Post = GhostBookshelf.Model.extend({
         if (opts.where) {
             postCollection.query('where', opts.where);
         }
+
+        opts.withRelated = [ "author", "user" ];
 
         // Set the limit & offset for the query, fetching
         // with the opts (to specify any eager relations, etc.)
