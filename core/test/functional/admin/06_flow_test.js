@@ -4,11 +4,10 @@
 
 /*globals casper, __utils__, url, testPost */
 casper.test.begin("Ghost edit draft flow works correctly", 7, function suite(test) {
-
-    casper.test.filename = "flow_test.png";
+    test.filename = "flow_test.png";
 
     casper.start(url + "ghost/editor", function then() {
-        test.assertEquals(casper.getCurrentUrl(), url + "ghost/editor", "Ghost doesn't require login this time");
+        test.assertUrlMatch(/ghost\/editor$/, "Ghost doesn't require login this time");
     }).viewport(1280, 1024);
 
     // First, create a new draft post
@@ -22,12 +21,17 @@ casper.test.begin("Ghost edit draft flow works correctly", 7, function suite(tes
         this.echo("I've waited for 1 seconds.");
     });
 
-    casper.thenClick('.button-save').waitForResource(/posts/, function then() {
-        test.assertExists('.notification-success', 'got success notification');
+    casper.thenClick('.button-save');
+    casper.waitForResource(/posts/);
+
+    casper.waitForSelector('.notification-success', function onSuccess() {
+        test.assert(true, 'Got success notification');
+    }, function onTimeout() {
+        test.assert(false, 'No success notification :(');
     });
 
     casper.thenOpen(url + 'ghost/content/', function then() {
-        test.assertEquals(casper.getCurrentUrl(), url + "ghost/content/", "Ghost doesn't require login this time");
+        test.assertUrlMatch(/ghost\/content\//, "Ghost successfully loaded the content page");
     });
 
     casper.then(function then() {
@@ -39,11 +43,16 @@ casper.test.begin("Ghost edit draft flow works correctly", 7, function suite(tes
     });
 
     casper.thenClick('.post-edit').waitForResource(/editor/, function then() {
-        test.assertUrlMatch(/editor/, "Ghost doesn't require login this time");
+        test.assertUrlMatch(/editor/, "Ghost sucessfully loaded the editor page again");
     });
 
-    casper.thenClick('.button-save').waitForResource(/posts/, function then() {
-        test.assertExists('.notification-success', 'got success notification');
+    casper.thenClick('.button-save');
+    casper.waitForResource(/posts/);
+
+    casper.waitForSelector('.notification-success', function onSuccess() {
+        test.assert(true, 'Got success notification');
+    }, function onTimeout() {
+        test.assert(false, 'No success notification :(');
     });
 
     casper.run(function () {
@@ -54,7 +63,7 @@ casper.test.begin("Ghost edit draft flow works correctly", 7, function suite(tes
 // TODO: test publishing, editing, republishing, unpublishing etc
 //casper.test.begin("Ghost edit published flow works correctly", 6, function suite(test) {
 //
-//    casper.test.filename = "flow_test.png";
+//    test.filename = "flow_test.png";
 //
 //
 //});

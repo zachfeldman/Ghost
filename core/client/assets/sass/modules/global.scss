@@ -10,6 +10,8 @@
  * Global Navigation
  * Mobile Navigation
  * Drop-down / Pop-up Menu
+ * Notifications
+ * Modals
  * Main Elements
  * Floating Headers
  * Image Uploader
@@ -381,23 +383,24 @@ nav {
 /* ==========================================================================
    Main Navigation
    ========================================================================== */
-#global-header { /* Added because the code editor was breaking for the title "Ghost" - this also happens on TryGhost */
-    #ghost {
-        @include icon($i-ghost);
-        display: block;
-        float:left;
-        height:40px;
-        padding:12px 15px;
-        color: lighten($grey, 10%);
-        @include box-sizing(border-box);
-        &:hover {text-decoration:none;}
-    }
 
-    #ghost:hover {
-        color: $lightgrey;
-        background:darken($darkgrey, 2%);
-    }
+.ghost-logo {
+    @include icon($i-ghost);
+    display: block;
+    float:left;
+    height:40px;
+    padding:12px 15px;
+    color: lighten($grey, 10%);
+    @include box-sizing(border-box);
+    
+    &:hover {text-decoration:none;}
 }
+
+.ghost-logo:hover {
+    color: $lightgrey;
+    background:darken($darkgrey, 2%);
+}
+
 
 
 .navbar {
@@ -579,7 +582,7 @@ nav {
 #global-header {
     @include breakpoint(650px) {
 
-        #ghost {
+        .ghost-logo {
             @include icon($i-menu, 14px);
             height:40px;
             width: 40px;
@@ -832,6 +835,9 @@ nav {
 /* ==========================================================================
    Notifications
    ========================================================================== */
+.js-bb-notification {
+    @include transform(translateZ(0));
+}
 
 %notification, .notification {
     @include box-sizing(border-box);
@@ -843,6 +849,7 @@ nav {
     background: $blue;
     position:relative;
     box-shadow: $shadow;
+    @include transform(translateZ(0));
 
     @include icon($i-notification) {
         position: absolute;
@@ -915,7 +922,8 @@ nav {
         left: 0;
         right: 0;
         z-index: 999;
-        @include transition(background 300ms ease);
+        @include transition(all 0.15s linear 0s);
+        @include transform(translateZ(0));
 
         &.dark {
             background: rgba(0,0,0,0.4);
@@ -934,7 +942,7 @@ nav {
 }
 
 body.blur > *:not(#modal-container) {
-    @include transition(all 300ms ease);
+    @include transition(all 0.15s linear 0s);
     -webkit-filter: blur(2px);
        -moz-filter: blur(2px);
         -ms-filter: blur(2px);
@@ -955,8 +963,13 @@ body.blur > *:not(#modal-container) {
     overflow:auto;
     z-index: 1001;
 
-    &.fadeIn {
-        @include animation(fadeIn 0.3s linear 1);
+    &.fade {
+        opacity: 0;
+        @include transition(opacity 0.2s linear 0s);
+
+        &.in {
+            opacity: 1;
+        }
     }
 }
 
@@ -1229,7 +1242,7 @@ main {
         background: $blue;
 
         &.fail {
-            background: $orange;
+            background: $red;
         }
     }
 }

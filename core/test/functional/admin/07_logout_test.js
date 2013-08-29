@@ -4,8 +4,7 @@
 
 /*globals casper, __utils__, url, testPost, falseUser, email */
 casper.test.begin("Ghost logout works correctly", 2, function suite(test) {
-
-    casper.test.filename = "logout_test.png";
+    test.filename = "logout_test.png";
 
     casper.start(url + "ghost/", function then() {
         test.assertEquals(casper.getCurrentUrl(), url + "ghost/", "Ghost doesn't require login this time");
@@ -19,8 +18,13 @@ casper.test.begin("Ghost logout works correctly", 2, function suite(test) {
         });
     });
 
-    casper.thenClick('.usermenu-signout a').waitForResource(/login/, function then() {
-        test.assertExists('.notification-success', 'got success notification');
+    casper.thenClick('.usermenu-signout a');
+    casper.waitForResource(/signin/);
+
+    casper.waitForSelector('.notification-success', function onSuccess() {
+        test.assert(true, 'Got success notification');
+    }, function onTimeout() {
+        test.assert(false, 'No success notification :(');
     });
 
     casper.run(function () {
@@ -30,8 +34,7 @@ casper.test.begin("Ghost logout works correctly", 2, function suite(test) {
 
 // has to be done after signing out
 casper.test.begin("Can't spam signin", 3, function suite(test) {
-
-    casper.test.filename = "spam_test.png";
+    test.filename = "spam_test.png";
 
     casper.start(url + "ghost/signin/", function testTitle() {
         test.assertTitle("", "Ghost admin has no title");
@@ -50,13 +53,12 @@ casper.test.begin("Can't spam signin", 3, function suite(test) {
         });
 
     });
-    casper.wait(200, function doneWait() {
-        this.echo("I've waited for 1 seconds.");
-    });
 
-    casper.then(function testForErrorMessage() {
-        test.assertExists('.notification-error', 'got error notification');
+    casper.waitForSelector('.notification-error', function onSuccess() {
+        test.assert(true, 'Got error notification');
         test.assertSelectorDoesntHaveText('.notification-error', '[object Object]');
+    }, function onTimeout() {
+        test.assert(false, 'No error notification :(');
     });
 
     casper.run(function () {
@@ -65,8 +67,7 @@ casper.test.begin("Can't spam signin", 3, function suite(test) {
 });
 
 casper.test.begin("Ghost signup fails properly", 5, function suite(test) {
-
-    casper.test.filename = "signup_test.png";
+    test.filename = "signup_test.png";
 
     casper.start(url + "ghost/signup/", function then() {
         test.assertEquals(casper.getCurrentUrl(), url + "ghost/signup/", "Reached signup page");
@@ -77,9 +78,12 @@ casper.test.begin("Ghost signup fails properly", 5, function suite(test) {
     });
 
     // should now throw a short password error
-    casper.waitForResource(/signup/, function () {
-        test.assertExists('.notification-error', 'got error notification');
+    casper.waitForResource(/signup/);
+    casper.waitForSelector('.notification-error', function onSuccess() {
+        test.assert(true, 'Got error notification');
         test.assertSelectorDoesntHaveText('.notification-error', '[object Object]');
+    }, function onTimeout() {
+        test.assert(false, 'No error notification :(');
     });
 
     casper.then(function signupWithLongPassword() {
@@ -87,9 +91,12 @@ casper.test.begin("Ghost signup fails properly", 5, function suite(test) {
     });
 
     // should now throw a 1 user only error
-    casper.waitForResource(/signup/, function () {
-        test.assertExists('.notification-error', 'got error notification');
+    casper.waitForResource(/signup/);
+    casper.waitForSelector('.notification-error', function onSuccess() {
+        test.assert(true, 'Got error notification');
         test.assertSelectorDoesntHaveText('.notification-error', '[object Object]');
+    }, function onTimeout() {
+        test.assert(false, 'No error notification :(');
     });
 
     casper.run(function () {
