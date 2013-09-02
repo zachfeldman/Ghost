@@ -11,10 +11,7 @@ config.defaultLang = 'en';
 // Force i18n to be on
 config.forceI18n = true;
 
-// ## Themes & Plugins
-
-// Current active theme
-config.activeTheme = 'casper';
+// ## Plugins
 
 // Current active plugins
 config.activePlugins = [
@@ -43,10 +40,12 @@ config.env = {
                 filename: path.join(__dirname, '/core/server/data/ghost-test.db')
             }
         },
-        url: {
+        server: {
             host: '127.0.0.1',
             port: '2369'
-        }
+        },
+        // The url to use when providing links to the site; like RSS and email.
+        url: 'http://127.0.0.1:2369'
     },
 
     travis: {
@@ -56,10 +55,12 @@ config.env = {
                 filename: path.join(__dirname, '/core/server/data/ghost-travis.db')
             }
         },
-        url: {
+        server: {
             host: '127.0.0.1',
             port: '2368'
-        }
+        },
+        // The url to use when providing links to the site; like RSS and email.
+        url: 'http://127.0.0.1:2368'
     },
 
     // Default configuration
@@ -71,10 +72,12 @@ config.env = {
             },
             debug: false
         },
-        url: {
+        server: {
             host: '127.0.0.1',
             port: '2368'
-        }
+        },
+        // The url to use when providing links to the site; like RSS and email.
+        url: 'http://127.0.0.1:2368'
     },
 
     staging: {
@@ -85,10 +88,12 @@ config.env = {
             },
             debug: false
         },
-        url: {
+        server: {
             host: '127.0.0.1',
             port: '2368'
-        }
+        },
+        // The url to use when providing links to the site; like RSS and email.
+        url: 'http://127.0.0.1:2368'
     },
 
     production: {
@@ -99,10 +104,12 @@ config.env = {
             },
             debug: false
         },
-        url: {
+        server: {
             host: '127.0.0.1',
             port: '2368'
-        }
+        },
+        // The url to use when providing links to the site; like RSS and email.
+        url: 'http://127.0.0.1:2368'
     }
 };
 

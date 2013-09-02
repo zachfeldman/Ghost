@@ -20,9 +20,22 @@ coreHelpers = function (ghost) {
      * @return {Object} A Moment time / date object
      */
     ghost.registerThemeHelper('date', function (context, options) {
+        if (!options && context.hasOwnProperty('hash')) {
+            options = context;
+            context = undefined;
+
+            // set to published_at by default, if it's available
+            // otherwise, this will print the current date
+            if (this.published_at) {
+                context = this.published_at;
+            }
+        }
+
         var f = options.hash.format || "MMM Do, YYYY",
             timeago = options.hash.timeago,
             date;
+
+
         if (timeago) {
             date = moment(context).fromNow();
         } else {
@@ -31,11 +44,25 @@ coreHelpers = function (ghost) {
         return date;
     });
 
+    // ### URL helper
+    //
+    // *Usage example:*
+    // `{{url}}`
+    // `{{url absolute}}`
+    //
+    // Returns the URL for the current object context
+    // i.e. If inside a post context will return post permalink
+    // absolute flag outputs absolute URL, else URL is relative
     ghost.registerThemeHelper('url', function (context, options) {
-        if (models.isPost(this)) {
-            return "/" + this.slug;
+        var output = '';
+
+        if (options && options.absolute) {
+            output += ghost.config().env[process.NODE_ENV].url;
         }
-        return '';
+        if (models.isPost(this)) {
+            output += "/" + this.slug;
+        }
+        return output;
     });
 
     // ### Author Helper
@@ -48,6 +75,29 @@ coreHelpers = function (ghost) {
     //
     ghost.registerThemeHelper('author', function (context, options) {
         return this.author ? this.author.full_name : "";
+    });
+
+    // ### Tags Helper
+    //
+    // *Usage example:*
+    // `{{tags}}`
+    // `{{tags separator=" - "}}`
+    //
+    // Returns a string of the tags on the post.
+    // By default, tags are separated by commas.
+    //
+    // Note that the standard {{#each tags}} implementation is unaffected by this helper
+    // and can be used for more complex templates.
+    ghost.registerThemeHelper('tags', function (options) {
+        var separator = ", ",
+            tagNames;
+
+        if (typeof options.hash.separator === "string") {
+            separator = options.hash.separator;
+        }
+
+        tagNames = _.pluck(this.tags, 'name');
+        return tagNames.join(separator);
     });
 
     // ### Content Helper
@@ -113,7 +163,9 @@ coreHelpers = function (ghost) {
 
     ghost.registerThemeHelper('body_class', function (options) {
         var classes = [];
-        if (!this.path || this.path === '/' || this.path === '') {
+        if (_.isString(this.path) && this.path.match(/\/page/)) {
+            classes.push('archive-template');
+        } else if (!this.path || this.path === '/' || this.path === '') {
             classes.push('home-template');
         } else {
             classes.push('post-template');
@@ -128,7 +180,10 @@ coreHelpers = function (ghost) {
     ghost.registerThemeHelper('post_class', function (options) {
         var classes = ['post'];
 
-        // TODO: add tag names once we have them
+        if (this.tags) {
+            classes = classes.concat(this.tags.map(function (tag) { return "tag-" + tag.name; }));
+        }
+
         return ghost.doFilter('post_class', classes, function (classes) {
             var classString = _.reduce(classes, function (memo, item) { return memo + ' ' + item; }, '');
             return new hbs.handlebars.SafeString(classString.trim());
@@ -138,9 +193,10 @@ coreHelpers = function (ghost) {
     ghost.registerThemeHelper('ghost_head', function (options) {
         var head = [];
         head.push('<meta name="generator" content="Ghost ' + this.version + '" />');
+        head.push('<link rel="alternate" type="application/rss+xml" title="RSS" href="/rss/">');
 
         return ghost.doFilter('ghost_head', head, function (head) {
-            var headString = _.reduce(head, function (memo, item) { return memo + ' ' + item; }, '');
+            var headString = _.reduce(head, function (memo, item) { return memo + "\n" + item; }, '');
             return new hbs.handlebars.SafeString(headString.trim());
         });
     });

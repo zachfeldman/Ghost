@@ -41,7 +41,8 @@
 
         showContent: function (id) {
             var self = this,
-                model;
+                model,
+                themes;
 
             Ghost.router.navigate('/settings/' + id);
             Ghost.trigger('urlchange');
@@ -53,9 +54,13 @@
             this.pane = new Settings[id]({ el: '.settings-content'});
 
             if (!this.models.hasOwnProperty(this.pane.options.modelType)) {
+                themes = this.models.Themes = new Ghost.Models.Themes();
                 model = this.models[this.pane.options.modelType] = new Ghost.Models[this.pane.options.modelType]();
-                model.fetch().then(function () {
-                    self.renderPane(model);
+                themes.fetch().then(function () {
+                    model.fetch().then(function () {
+                        model.set({availableThemes: themes.toJSON()});
+                        self.renderPane(model);
+                    });
                 });
             } else {
                 model = this.models[this.pane.options.modelType];
@@ -86,7 +91,11 @@
             this.$el.removeClass('active');
             this.undelegateEvents();
         },
-
+        render: function () {
+            this.$el.hide();
+            Ghost.View.prototype.render.call(this);
+            this.$el.fadeIn(300);
+        },
         afterRender: function () {
             this.$el.attr('id', this.id);
             this.$el.addClass('active');
@@ -130,12 +139,13 @@
         },
 
         saveSettings: function () {
+            this.model.unset('availableThemes');
             this.model.save({
                 title: this.$('#blog-title').val(),
                 email: this.$('#email-address').val(),
                 logo: this.$('#logo').attr("src"),
-                icon: this.$('#icon').attr("src")
-
+                icon: this.$('#icon').attr("src"),
+                activeTheme: this.$('#activeTheme').val()
             }, {
                 success: this.saveSuccess,
                 error: this.saveError

@@ -108,10 +108,8 @@ function ghostLocals(req, res, next) {
     if (!res.isAdmin) {
         // filter the navigation items
         ghost.doFilter('ghostNavItems', {path: req.path, navItems: []}, function (navData) {
-            // pass the theme navigation items and settings
-            _.extend(res.locals, navData, {
-                settings: ghost.settings()
-            });
+            // pass the theme navigation items, settings get configured as globals
+            _.extend(res.locals, navData);
 
             next();
         });
@@ -199,10 +197,14 @@ when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(
     ghost.app().get('/api/v0.1/settings', authAPI, disableCachedResult, api.cachedSettingsRequestHandler(api.settings.browse));
     ghost.app().get('/api/v0.1/settings/:key', authAPI, disableCachedResult, api.cachedSettingsRequestHandler(api.settings.read));
     ghost.app().put('/api/v0.1/settings', authAPI, disableCachedResult, api.cachedSettingsRequestHandler(api.settings.edit));
+    // #### Themes
+    ghost.app().get('/api/v0.1/themes', authAPI, disableCachedResult, api.requestHandler(api.themes.browse));
     // #### Users
     ghost.app().get('/api/v0.1/users', authAPI, disableCachedResult, api.requestHandler(api.users.browse));
     ghost.app().get('/api/v0.1/users/:id', authAPI, disableCachedResult, api.requestHandler(api.users.read));
     ghost.app().put('/api/v0.1/users/:id', authAPI, disableCachedResult, api.requestHandler(api.users.edit));
+    // #### Tags
+    ghost.app().get('/api/v0.1/tags', authAPI, disableCachedResult, api.requestHandler(api.tags.all));
     // #### Notifications
     ghost.app().del('/api/v0.1/notifications/:id', authAPI, disableCachedResult, api.requestHandler(api.notifications.destroy));
     ghost.app().post('/api/v0.1/notifications/', authAPI, disableCachedResult, api.requestHandler(api.notifications.add));
@@ -247,8 +249,8 @@ when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(
 
     // ## Start Ghost App
     ghost.app().listen(
-        ghost.config().env[process.env.NODE_ENV || 'development'].url.port,
-        ghost.config().env[process.env.NODE_ENV || 'development'].url.host,
+        ghost.config().env[process.env.NODE_ENV].server.port,
+        ghost.config().env[process.env.NODE_ENV].server.host,
         function () {
 
             // Tell users if their node version is not supported, and exit
@@ -273,8 +275,8 @@ when.all([ghost.init(), filters.loadCoreFilters(ghost), helpers.loadCoreHelpers(
 
             // Startup message
             console.log("Express server listening on address:",
-                ghost.config().env[process.env.NODE_ENV || 'development'].url.host + ':'
-                    + ghost.config().env[process.env.NODE_ENV || 'development'].url.port);
+                ghost.config().env[process.env.NODE_ENV].server.host + ':'
+                    + ghost.config().env[process.env.NODE_ENV].server.port);
 
             // Let everyone know we have finished loading
             loading.resolve();
