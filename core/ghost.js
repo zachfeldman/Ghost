@@ -12,6 +12,7 @@ var config = require('./../config'),
     nodefn = require('when/node/function'),
     _ = require('underscore'),
     Polyglot = require('node-polyglot'),
+    Mailer = require('./server/mail'),
     models = require('./server/models'),
     plugins = require('./server/plugins'),
     requireTree = require('./server/require-tree'),
@@ -42,7 +43,7 @@ defaults = {
 
 // ## Article Statuses
 /**
- * A list of atricle status types
+ * A list of article status types
  * @type {Object}
  */
 statuses = {
@@ -104,13 +105,12 @@ Ghost = function () {
                     url: instance.config().env[process.env.NODE_ENV].url,
                     title: instance.settings().title,
                     description: instance.settings().description,
-                    logo: instance.settings().logo,
-                    /* urg.. need to fix paths */
-                    themedir: path.join('/content/themes', instance.paths().activeTheme,  instance.settingsCache.activeTheme)
+                    logo: instance.settings().logo
                 };
             },
             statuses: function () { return statuses; },
             polyglot: function () { return polyglot; },
+            mail: new Mailer(),
             getPaths: function () {
                 return when.all([themeDirectories, pluginDirectories]).then(function (paths) {
                     instance.themeDirectories = paths[0];
@@ -140,8 +140,13 @@ Ghost = function () {
 Ghost.prototype.init = function () {
     var self = this;
 
-    return when.join(instance.dataProvider.init(), instance.getPaths()).then(function () {
-        // Initialize plugins
+    return when.join(
+        instance.dataProvider.init(),
+        instance.getPaths(),
+        instance.mail.init(self)
+    ).then(function () {
+        return models.Settings.populateDefaults();
+    }).then(function () {
         return self.initPlugins();
     }).then(function () {
         // Initialize the settings cache

@@ -88,7 +88,7 @@ adminControllers = {
         }
     },
     'login': function (req, res) {
-        res.render('login', {
+        res.render('signup', {
             bodyClass: 'ghost-login',
             hideNavbar: true,
             adminNav: setSelected(adminNavbar, 'login')
@@ -138,6 +138,7 @@ adminControllers = {
             adminNav: setSelected(adminNavbar, 'login')
         });
     },
+
     'doRegister': function (req, res) {
         var email = req.body.email,
             password = req.body.password;
@@ -146,6 +147,7 @@ adminControllers = {
             email_address: email,
             password: password
         }).then(function (user) {
+
             if (req.session.user === undefined) {
                 req.session.user = user.id;
             }
@@ -155,20 +157,55 @@ adminControllers = {
         });
 
     },
+
+    'forgotten': function (req, res) {
+        res.render('signup', {
+            bodyClass: 'ghost-forgotten',
+            hideNavbar: true,
+            adminNav: setSelected(adminNavbar, 'login')
+        });
+    },
+
+    'resetPassword': function (req, res) {
+        var email = req.body.email;
+
+        api.users.forgottenPassword(email).then(function (user) {
+            var message = {
+                    to: email,
+                    subject: 'Your new password',
+                    html: "<p><strong>Hello!</strong></p>" +
+                        "<p>You've reset your password. Here's the new one: " + user.newPassword + "</p>"
+                };
+
+            return ghost.mail.send(message);
+        }).then(function success() {
+            var notification = {
+                type: 'success',
+                message: 'Your password was changed successfully. Check your email for details.',
+                status: 'passive',
+                id: 'successresetpw'
+            };
+
+            return api.notifications.add(notification).then(function () {
+                res.json(200, {redirect: '/ghost/signin/'});
+            });
+
+        }, function failure(error) {
+            res.json(401, {error: error.message});
+        }).otherwise(errors.logAndThrowError);
+    },
     'logout': function (req, res) {
         delete req.session.user;
-        var msg = {
+        var notification = {
             type: 'success',
             message: 'You were successfully signed out',
             status: 'passive',
             id: 'successlogout'
         };
-        // let's only add the notification once
-        if (!_.contains(_.pluck(ghost.notifications, 'id'), 'successlogout')) {
-            ghost.notifications.push(msg);
-        }
 
-        res.redirect('/ghost/signin/');
+        return api.notifications.add(notification).then(function () {
+            res.redirect('/ghost/signin/');
+        });
     },
     'index': function (req, res) {
         res.render('dashboard', {
@@ -178,15 +215,10 @@ adminControllers = {
     },
     'editor': function (req, res) {
         if (req.params.id !== undefined) {
-            api.posts.read({id: parseInt(req.params.id, 10)})
-                .then(function (post) {
-                    res.render('editor', {
-                        bodyClass: 'editor',
-                        adminNav: setSelected(adminNavbar, 'content'),
-                        title: post.get('title'),
-                        content: post.get('content')
-                    });
-                });
+            res.render('editor', {
+                bodyClass: 'editor',
+                adminNav: setSelected(adminNavbar, 'content')
+            });
         } else {
             res.render('editor', {
                 bodyClass: 'editor',
@@ -195,24 +227,16 @@ adminControllers = {
         }
     },
     'content': function (req, res) {
-        api.posts.browse({status: req.params.status || 'all'})
-            .then(function (page) {
-                res.render('content', {
-                    bodyClass: 'manage',
-                    adminNav: setSelected(adminNavbar, 'content'),
-                    posts: page.posts
-                });
-            });
+        res.render('content', {
+            bodyClass: 'manage',
+            adminNav: setSelected(adminNavbar, 'content')
+        });
     },
     'settings': function (req, res) {
-        api.settings.browse()
-            .then(function (settings) {
-                res.render('settings', {
-                    bodyClass: 'settings',
-                    adminNav: setSelected(adminNavbar, 'settings'),
-                    settings: settings
-                });
-            });
+        res.render('settings', {
+            bodyClass: 'settings',
+            adminNav: setSelected(adminNavbar, 'settings')
+        });
     },
     'debug': { /* ugly temporary stuff for managing the app before it's properly finished */
         index: function (req, res) {

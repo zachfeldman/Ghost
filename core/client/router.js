@@ -14,7 +14,8 @@
             'debug/'           : 'debug',
             'register/'        : 'register',
             'signup/'          : 'signup',
-            'signin/'          : 'login'
+            'signin/'          : 'login',
+            'forgotten/'       : 'forgotten'
         },
 
         signup: function () {
@@ -25,6 +26,10 @@
             Ghost.currentView = new Ghost.Views.Login({ el: '.js-login-container' });
         },
 
+        forgotten: function () {
+            Ghost.currentView = new Ghost.Views.Forgotten({ el: '.js-login-container' });
+        },
+
         blog: function () {
             var posts = new Ghost.Collections.Posts();
             posts.fetch({ data: { status: 'all', orderBy: ['updated_at', 'DESC'] } }).then(function () {
@@ -33,6 +38,15 @@
         },
 
         settings: function (pane) {
+            if (!pane) {
+                // Redirect to settings/general if no pane supplied
+                this.navigate('/settings/general', {
+                    trigger: true,
+                    replace: true
+                });
+                return;
+            }
+
             // only update the currentView if we don't already have a Settings view
             if (!Ghost.currentView || !(Ghost.currentView instanceof Ghost.Views.Settings)) {
                 Ghost.currentView = new Ghost.Views.Settings({ el: '#main', pane: pane });

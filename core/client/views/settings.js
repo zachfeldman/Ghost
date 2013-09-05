@@ -1,4 +1,4 @@
-/*global window, document, Ghost, $, _, Backbone */
+/*global window, document, Ghost, $, _, Backbone, Countable */
 (function () {
     "use strict";
 
@@ -9,11 +9,26 @@
     Ghost.Views.Settings = Ghost.View.extend({
         initialize: function (options) {
             $(".settings-content").removeClass('active');
-            this.addSubview(new Settings.Sidebar({
+
+            this.sidebar = new Settings.Sidebar({
                 el: '.settings-sidebar',
                 pane: options.pane,
                 model: this.model
-            }));
+            });
+
+            this.addSubview(this.sidebar);
+
+            this.listenTo(Ghost.router, "route:settings", this.changePane);
+        },
+
+        changePane: function (pane) {
+            if (!pane) {
+                // Can happen when trying to load /settings with no pane specified
+                // let the router navigate itself to /settings/general
+                return;
+            }
+
+            this.sidebar.showContent(pane);
         }
     });
 
@@ -23,7 +38,7 @@
         initialize: function (options) {
             this.render();
             this.menu = this.$('.settings-menu');
-            this.showContent(options.pane || 'general');
+            this.showContent(options.pane);
         },
 
         models: {},
@@ -36,6 +51,7 @@
             e.preventDefault();
             var item = $(e.currentTarget),
                 id = item.find('a').attr('href').substring(1);
+
             this.showContent(id);
         },
 
@@ -135,10 +151,13 @@
         id: "general",
 
         events: {
-            'click .button-save': 'saveSettings'
+            'click .button-save': 'saveSettings',
+            'click .js-modal-logo': 'showLogo',
+            'click .js-modal-icon': 'showIcon'
         },
 
         saveSettings: function () {
+            var themes = this.model.get('availableThemes');
             this.model.unset('availableThemes');
             this.model.save({
                 title: this.$('#blog-title').val(),
@@ -150,8 +169,60 @@
                 success: this.saveSuccess,
                 error: this.saveError
             });
+            this.model.set({availableThemes: themes});
         },
-
+        showLogo: function () {
+            var settings = this.model.toJSON();
+            this.showUpload('#logo', 'logo', settings.logo);
+        },
+        showIcon: function () {
+            var settings = this.model.toJSON();
+            this.showUpload('#icon', 'icon', settings.icon);
+        },
+        showUpload: function (id, key, src) {
+            var self = this;
+            this.addSubview(new Ghost.Views.Modal({
+                model: {
+                    options: {
+                        close: false,
+                        type: "action",
+                        style: "wide",
+                        animation: 'fadeIn',
+                        afterRender: function () {
+                            this.$('.js-drop-zone').upload();
+                        },
+                        confirm: {
+                            accept: {
+                                func: function () { // The function called on acceptance
+                                    var data = {};
+                                    data[key] = this.$('.js-upload-target').attr('src');
+                                    self.model.save(data, {
+                                        success: self.saveSuccess,
+                                        error: self.saveError
+                                    });
+                                    self.render();
+                                    return true;
+                                },
+                                buttonClass: "button-save right",
+                                text: "Save" // The accept button text
+                            },
+                            reject: {
+                                func: function () { // The function called on rejection
+                                    return true;
+                                },
+                                buttonClass: true,
+                                text: "Cancel" // The reject button text
+                            }
+                        },
+                        id: id,
+                        src: src
+                    },
+                    content: {
+                        template: 'uploadImage'
+                    }
+                }
+            }));
+        },
         templateName: 'settings/general',
 
         beforeRender: function () {
@@ -173,12 +244,15 @@
             'click .button-save': 'saveSettings'
         },
         saveSettings: function () {
+            var themes = this.model.get('availableThemes');
+            this.model.unset('availableThemes');
             this.model.save({
                 description: this.$('#blog-description').val()
             }, {
                 success: this.saveSuccess,
                 error: this.saveError
             });
+            this.model.set({availableThemes: themes});
         },
 
         templateName: 'settings/content',
@@ -274,6 +348,22 @@
             this.$('#user-bio').val(user.bio);
             this.$('#user-profile-picture').attr('src', user.profile_picture);
             this.$('#user-cover-picture').attr('src', user.cover_picture);
+        },
+
+        afterRender: function () {
+            var self = this;
+            Countable.live(document.getElementById('user-bio'), function (counter) {
+                if (counter.all > 180) {
+                    self.$('.bio-container .word-count').css({color: "#e25440"});
+                } else {
+                    self.$('.bio-container .word-count').css({color: "#9E9D95"});
+                }
+
+                self.$('.bio-container .word-count').text(200 - counter.all);
+
+            });
+
+            Settings.Pane.prototype.afterRender.call(this);
         }
     });
 
