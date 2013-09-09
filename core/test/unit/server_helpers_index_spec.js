@@ -245,40 +245,15 @@ describe('Core Helpers', function () {
         });
     });
 
-    describe('Navigation Helper', function () {
-
-        it('has loaded nav helper', function () {
-            should.exist(handlebars.helpers.nav);
+    describe('Page Url Helper', function () {
+        it('has loaded pageUrl helper', function () {
+            should.exist(handlebars.helpers.pageUrl);
         });
 
-        it('can render nav items', function (done) {
-            var templateSpy = sinon.spy(function (data) { return "rendered " + data.links.length; }),
-                compileSpy = sinon.stub(ghost, 'compileTemplate').returns(when.resolve(templateSpy)),
-                fakeNavItems = [{
-                    title: 'test1',
-                    url: '/test1'
-                }, {
-                    title: 'test2',
-                    url: '/test2'
-                }],
-                rendered;
-
-            helpers.loadCoreHelpers(ghost).then(function () {
-                rendered = handlebars.helpers.nav.call({navItems: fakeNavItems});
-
-                // Returns a string returned from navTemplateFunc
-                should.exist(rendered);
-                rendered.string.should.equal("rendered 2");
-
-                compileSpy.called.should.equal(true);
-                templateSpy.called.should.equal(true);
-                templateSpy.calledWith({ links: fakeNavItems }).should.equal(true);
-
-
-                compileSpy.restore();
-
-                done();
-            }).then(null, done);
+        it('can return a valid url', function () {
+            handlebars.helpers.pageUrl(1).should.equal('/');
+            handlebars.helpers.pageUrl(2).should.equal('/page/2/');
+            handlebars.helpers.pageUrl(50).should.equal('/page/50/');
         });
     });
 

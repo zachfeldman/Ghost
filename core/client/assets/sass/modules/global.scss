@@ -947,7 +947,6 @@ body.blur > *:not(#modal-container) {
        -moz-filter: blur(2px);
         -ms-filter: blur(2px);
          -o-filter: blur(2px);
-    filter: blur(2px);
     @include transform(translateZ(0));
 
 }
@@ -956,12 +955,12 @@ body.blur > *:not(#modal-container) {
     @include box-sizing(border-box);
     max-height: 90%;
     width: 450px;
-    padding: 0px;
-    background: #FFFFFF;
-    border: 6px solid rgba(0,0,0,0.5);
+    padding: 0;
+    background: #fff;
     border-radius: $rounded;
     overflow:auto;
     z-index: 1001;
+    box-shadow: rgba(0,0,0,0.2) 0 0 0 6px;
 
     &.fade {
         opacity: 0;
@@ -1028,6 +1027,7 @@ body.blur > *:not(#modal-container) {
 
 .modal-content {
     padding: 0 20px;
+    min-height: 100px;
 }
 
 .modal-footer {
@@ -1260,12 +1260,15 @@ main {
     overflow: hidden;
     height: auto;
     color: $brown;
+    background: rgba(0,0,0,0.1);
+    border-radius: 2px;
 
     input {
         position: absolute;
         left: 9999px;
         opacity: 0;
     }
+
     a {
         z-index: 10000;
         color: $brown;
@@ -1275,14 +1278,19 @@ main {
             color: $darkgrey;
         }
     }
+
     img {
+        display: block;
         max-width: 100%;
+        margin: 0 auto;
+        line-height: 0;
     }
+
     .image-cancel {
         @include icon($i-x, 16px);
         position: absolute;
         color: white;
-        text-shadow: rgba(0,0,0,0.5) 0 0 1px;
+        text-shadow: rgba(0,0,0,0.3) 0 0 3px;
         top: 10px;
         right: 10px;
         text-decoration: none;
@@ -1292,7 +1300,8 @@ main {
             color: white;
         }
     }
-}
+
+}//.pre-image-uploader
 
 
 /* ==========================================================================

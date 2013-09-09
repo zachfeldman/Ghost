@@ -153,19 +153,21 @@
         events: {
             'click .button-save': 'saveSettings',
             'click .js-modal-logo': 'showLogo',
-            'click .js-modal-icon': 'showIcon'
+            'click .js-modal-cover': 'showCover'
         },
 
         saveSettings: function () {
             var themes = this.model.get('availableThemes');
             this.model.unset('availableThemes');
             this.model.save({
+                id: 0, //workaround to use put
                 title: this.$('#blog-title').val(),
+                description: $('#blog-description').val(),
+                logo: this.$('#blog-logo').attr("src"),
+                cover: this.$('#blog-cover').attr("src"),
                 email: this.$('#email-address').val(),
-                logo: this.$('#logo').attr("src"),
-                icon: this.$('#icon').attr("src"),
-                activeTheme: this.$('#activeTheme').val(),
-                postsPerPage: this.$('#postsPerPage').val()
+                postsPerPage: this.$('#postsPerPage').val(),
+                activeTheme: this.$('#activeTheme').val()
             }, {
                 success: this.saveSuccess,
                 error: this.saveError
@@ -176,61 +178,31 @@
             var settings = this.model.toJSON();
             this.showUpload('#logo', 'logo', settings.logo);
         },
-        showIcon: function () {
+        showCover: function () {
             var settings = this.model.toJSON();
-            this.showUpload('#icon', 'icon', settings.icon);
+            this.showUpload('#cover', 'cover', settings.icon);
         },
         showUpload: function (id, key, src) {
-            var self = this;
+            var self = this, upload = new Ghost.Models.uploadModal({'id': id, 'key': key, 'src': src, 'accept': {
+                func: function () { // The function called on acceptance
+                    var data = {};
+                    data[key] = this.$('.js-upload-target').attr('src');
+                    self.model.save(data, {
+                        success: self.saveSuccess,
+                        error: self.saveError
+                    });
+                    self.render();
+                    return true;
+                },
+                buttonClass: "button-save right",
+                text: "Save" // The accept button text
+            }});
+
             this.addSubview(new Ghost.Views.Modal({
-                model: {
-                    options: {
-                        close: false,
-                        type: "action",
-                        style: ["wide"],
-                        animation: 'fade',
-                        afterRender: function () {
-                            this.$('.js-drop-zone').upload();
-                        },
-                        confirm: {
-                            accept: {
-                                func: function () { // The function called on acceptance
-                                    var data = {};
-                                    data[key] = this.$('.js-upload-target').attr('src');
-                                    self.model.save(data, {
-                                        success: self.saveSuccess,
-                                        error: self.saveError
-                                    });
-                                    self.render();
-                                    return true;
-                                },
-                                buttonClass: "button-save right",
-                                text: "Save" // The accept button text
-                            },
-                            reject: {
-                                func: function () { // The function called on rejection
-                                    return true;
-                                },
-                                buttonClass: true,
-                                text: "Cancel" // The reject button text
-                            }
-                        },
-                        id: id,
-                        src: src
-                    },
-                    content: {
-                        template: 'uploadImage'
-                    }
-                }
+                model: upload
             }));
         },
         templateName: 'settings/general',
-
-        beforeRender: function () {
-            var settings = this.model.toJSON();
-            this.$('#blog-title').val(settings.title);
-            this.$('#email-address').val(settings.email);
-        },
 
         afterRender: function () {
             this.$('.js-drop-zone').upload();
@@ -238,33 +210,7 @@
         }
     });
 
-    // ### Content settings
-    Settings.content = Settings.Pane.extend({
-        id: 'content',
-        events: {
-            'click .button-save': 'saveSettings'
-        },
-        saveSettings: function () {
-            var themes = this.model.get('availableThemes');
-            this.model.unset('availableThemes');
-            this.model.save({
-                description: this.$('#blog-description').val()
-            }, {
-                success: this.saveSuccess,
-                error: this.saveError
-            });
-            this.model.set({availableThemes: themes});
-        },
-
-        templateName: 'settings/content',
-
-        beforeRender: function () {
-            var settings = this.model.toJSON();
-            this.$('#blog-description').val(settings.description);
-        }
-    });
-
-     // ### User profile
+    // ### User profile
     Settings.user = Settings.Pane.extend({
         id: 'user',
 
@@ -274,7 +220,38 @@
 
         events: {
             'click .button-save': 'saveUser',
-            'click .button-change-password': 'changePassword'
+            'click .button-change-password': 'changePassword',
+            'click .js-modal-cover-picture': 'showCoverPicture',
+            'click .js-modal-profile-picture': 'showProfilePicture'
+        },
+        showCoverPicture: function () {
+            var user = this.model.toJSON();
+            this.showUpload('#user-cover-picture', 'cover_picture', user.cover_picture);
+        },
+        showProfilePicture: function (e) {
+            e.preventDefault();
+            var user = this.model.toJSON();
+            this.showUpload('#user-profile-picture', 'profile_picture', user.profile_picture);
+        },
+        showUpload: function (id, key, src) {
+            var self = this, upload = new Ghost.Models.uploadModal({'id': id, 'key': key, 'src': src, 'accept': {
+                func: function () { // The function called on acceptance
+                    var data = {};
+                    data[key] = this.$('.js-upload-target').attr('src');
+                    self.model.save(data, {
+                        success: self.saveSuccess,
+                        error: self.saveError
+                    });
+                    self.render();
+                    return true;
+                },
+                buttonClass: "button-save right",
+                text: "Save" // The accept button text
+            }});
+
+            this.addSubview(new Ghost.Views.Modal({
+                model: upload
+            }));
         },
 
 
@@ -339,17 +316,6 @@
         },
 
         templateName: 'settings/user-profile',
-
-        beforeRender: function () {
-            var user = this.model.toJSON();
-            this.$('#user-name').val(user.full_name);
-            this.$('#user-email').val(user.email_address);
-            this.$('#user-location').val(user.location);
-            this.$('#user-website').val(user.url);
-            this.$('#user-bio').val(user.bio);
-            this.$('#user-profile-picture').attr('src', user.profile_picture);
-            this.$('#user-cover-picture').attr('src', user.cover_picture);
-        },
 
         afterRender: function () {
             var self = this;

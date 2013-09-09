@@ -62,7 +62,8 @@ adminControllers = {
             dir = path.join('content/images', year, month),
             target_path = path.join(dir, req.files.uploadimage.name),
             ext = path.extname(req.files.uploadimage.name).toLowerCase(),
-            src = path.join('/', target_path);
+        // the src for the image must be in URI format, not a file system path, which in Windows uses \
+            src = path.join('/', target_path).replace(new RegExp('\\' + path.sep, 'g'), '/');
 
         function renameFile() {
             // adds directories recursively
@@ -140,10 +141,12 @@ adminControllers = {
     },
 
     'doRegister': function (req, res) {
-        var email = req.body.email,
+        var name = req.body.name,
+            email = req.body.email,
             password = req.body.password;
 
         api.users.add({
+            full_name: name,
             email_address: email,
             password: password
         }).then(function (user) {
@@ -174,7 +177,10 @@ adminControllers = {
                     to: email,
                     subject: 'Your new password',
                     html: "<p><strong>Hello!</strong></p>" +
-                        "<p>You've reset your password. Here's the new one: " + user.newPassword + "</p>"
+                          "<p>You've reset your password. Here's the new one: " + user.newPassword + "</p>" +
+                          "<p>Ghost <br/>" +
+                          '<a href="' + ghost.config().env[process.env.NODE_ENV].url + '">' +
+                           ghost.config().env[process.env.NODE_ENV].url + '</a></p>'
                 };
 
             return ghost.mail.send(message);
