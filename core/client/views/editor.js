@@ -1,6 +1,6 @@
 // # Article Editor
 
-/*global window, document, $, _, Backbone, Ghost, Showdown, CodeMirror, shortcut, Countable, JST */
+/*global window, document, setTimeout, navigator, $, _, Backbone, Ghost, Showdown, CodeMirror, shortcut, Countable, JST */
 (function () {
     "use strict";
 
@@ -122,11 +122,15 @@
             });
         },
 
-        setActiveStatus: function setActiveStatus(status, displayText) {
+        setActiveStatus: function (status, displayText) {
             // Set the publish button's action
             $('.js-post-button')
                 .attr('data-status', status)
                 .text(displayText);
+
+            // Remove the animated popup arrow
+            $('.splitbutton-save > a')
+                .removeClass('active');
 
             // Set the active action in the popup
             $('.splitbutton-save .editor-options li')
@@ -190,8 +194,6 @@
             }, function (xhr) {
                 // Show a notification about the error
                 self.reportSaveError(xhr, model, status);
-                // Set the button text back to previous
-                model.set({ status: prevStatus });
             });
         },
 
@@ -234,7 +236,10 @@
         },
 
         render: function () {
-            this.$('.js-post-button').text(this.statusMap[this.model.get('status')]);
+            var status = this.model.get('status');
+
+            // Default the selected publish option to the current status of the post.
+            this.setActiveStatus(status, this.statusMap[status]);
         }
 
     });
@@ -284,7 +289,8 @@
 
         events: {
             'click .markdown-help': 'showHelp',
-            'blur #entry-title': 'trimTitle'
+            'blur #entry-title': 'trimTitle',
+            'orientationchange': 'orientationChange'
         },
 
         syncScroll: _.debounce(function (e) {
@@ -327,6 +333,18 @@
 
             if (rawTitle !== trimmedTitle) {
                 $title.val(trimmedTitle);
+            }
+        },
+
+        // This is a hack to remove iOS6 white space on orientation change bug
+        // See: http://cl.ly/RGx9
+        orientationChange: function () {
+            if (/iPhone/.test(navigator.userAgent) && !/Opera Mini/.test(navigator.userAgent)) {
+                var focusedElement = document.activeElement,
+                    s = document.documentElement.style;
+                focusedElement.blur();
+                s.display = 'none';
+                setTimeout(function () { s.display = 'block'; focusedElement.focus(); }, 0);
             }
         },
 
