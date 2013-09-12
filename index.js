@@ -54,12 +54,22 @@ function auth(req, res, next) {
 }
 
 
-// Check if we're logged in, and if so, redirect people back to dashboard
+// Check if we're logged in, and if so, redirect people back to content
 // Login and signup forms in particular
-function redirectToDashboard(req, res, next) {
+function redirectToIndex(req, res, next) {
     if (req.session.user) {
         return res.redirect('/ghost/');
     }
+
+    next();
+}
+
+function redirectToSignup(req, res, next) {
+    api.users.browse().then(function (users) {
+        if (users.length === 0) {
+            return res.redirect('/ghost/signup/');
+        }
+    });
 
     next();
 }
@@ -212,9 +222,9 @@ when.all([ghost.init(), helpers.loadCoreHelpers(ghost)]).then(function () {
     ghost.app().get('/ghost/login/', function redirect(req, res) {
         res.redirect(301, '/ghost/signin/');
     });
-    ghost.app().get('/ghost/signin/', redirectToDashboard, admin.login);
-    ghost.app().get('/ghost/signup/', redirectToDashboard, admin.signup);
-    ghost.app().get('/ghost/forgotten/', redirectToDashboard, admin.forgotten);
+    ghost.app().get('/ghost/signin/', redirectToSignup, redirectToIndex, admin.login);
+    ghost.app().get('/ghost/signup/', redirectToIndex, admin.signup);
+    ghost.app().get('/ghost/forgotten/', redirectToIndex, admin.forgotten);
     ghost.app().post('/ghost/forgotten/', admin.resetPassword);
     ghost.app().post('/ghost/signin/', admin.auth);
     ghost.app().post('/ghost/signup/', admin.doRegister);
@@ -231,7 +241,7 @@ when.all([ghost.init(), helpers.loadCoreHelpers(ghost)]).then(function () {
     ghost.app().get(/^\/(ghost$|(ghost-admin|admin|wp-admin|dashboard|signin)\/?)/, auth, function (req, res) {
         res.redirect('/ghost/');
     });
-    ghost.app().get('/ghost/', auth, admin.index);
+    ghost.app().get('/ghost/', redirectToSignup, auth, admin.index);
 
     // ### Frontend routes
     /* TODO: dynamic routing, homepage generator, filters ETC ETC */

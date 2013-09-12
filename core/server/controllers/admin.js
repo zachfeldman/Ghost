@@ -18,17 +18,11 @@ var Ghost = require('../../ghost'),
 
  // TODO: combine path/navClass to single "slug(?)" variable with no prefix
 adminNavbar = {
-    dashboard: {
-        name: 'Dashboard',
-        navClass: 'dashboard',
-        key: 'admin.navbar.dashboard',
-        path: '/'
-    },
     content: {
         name: 'Content',
         navClass: 'content',
         key: 'admin.navbar.content',
-        path: '/content/'
+        path: '/'
     },
     add: {
         name: 'New Post',
@@ -116,7 +110,7 @@ adminControllers = {
         }
     },
     'login': function (req, res) {
-        res.render('signup', {
+        res.render('login', {
             bodyClass: 'ghost-login',
             hideNavbar: true,
             adminNav: setSelected(adminNavbar, 'login')
@@ -161,7 +155,7 @@ adminControllers = {
     },
     'signup': function (req, res) {
         res.render('signup', {
-            bodyClass: 'ghost-login',
+            bodyClass: 'ghost-signup',
             hideNavbar: true,
             adminNav: setSelected(adminNavbar, 'login')
         });
@@ -189,7 +183,7 @@ adminControllers = {
     },
 
     'forgotten': function (req, res) {
-        res.render('signup', {
+        res.render('forgotten', {
             bodyClass: 'ghost-forgotten',
             hideNavbar: true,
             adminNav: setSelected(adminNavbar, 'login')
@@ -241,9 +235,9 @@ adminControllers = {
         });
     },
     'index': function (req, res) {
-        res.render('dashboard', {
-            bodyClass: 'dashboard',
-            adminNav: setSelected(adminNavbar, 'dashboard')
+        res.render('content', {
+            bodyClass: 'manage',
+            adminNav: setSelected(adminNavbar, 'content')
         });
     },
     'editor': function (req, res) {
