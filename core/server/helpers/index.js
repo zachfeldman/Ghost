@@ -3,13 +3,17 @@ var _ = require('underscore'),
     downsize = require('downsize'),
     when = require('when'),
     hbs = require('express-hbs'),
+    packageInfo = require('../../../package.json'),
     errors = require('../errorHandling'),
     models = require('../models'),
     coreHelpers;
 
 
 coreHelpers = function (ghost) {
-    var paginationHelper;
+    var paginationHelper,
+        scriptTemplate = _.template("<script src='/built/scripts/<%= name %>?v=<%= version %>'></script>"),
+        isProduction = process.env.NODE_ENV === "production",
+        version = encodeURIComponent(packageInfo.version);
 
     /**
      * [ description]
@@ -44,10 +48,10 @@ coreHelpers = function (ghost) {
     });
 
     // ### Page URL Helper
-    // 
+    //
     // *Usage example:*
     // `{{pageUrl 2}}`
-    // 
+    //
     // Returns the URL for the page specified in the current object
     // context.
     //
@@ -68,11 +72,11 @@ coreHelpers = function (ghost) {
         var output = '';
 
         if (options && options.hash.absolute) {
-            output += ghost.config().env[process.env.NODE_ENV].url;
+            output += ghost.config().url;
         }
 
         if (models.isPost(this)) {
-            output += "/" + this.slug;
+            output += "/" + this.slug + '/';
         }
 
         return output;
@@ -87,7 +91,7 @@ coreHelpers = function (ghost) {
     // if the author could not be determined.
     //
     ghost.registerThemeHelper('author', function (context, options) {
-        return this.author ? this.author.full_name : "";
+        return this.author ? this.author.name : "";
     });
 
     // ### Tags Helper
@@ -133,11 +137,11 @@ coreHelpers = function (ghost) {
 
         if (truncateOptions.words || truncateOptions.characters) {
             return new hbs.handlebars.SafeString(
-                downsize(this.content, truncateOptions)
+                downsize(this.html, truncateOptions)
             );
         }
 
-        return new hbs.handlebars.SafeString(this.content);
+        return new hbs.handlebars.SafeString(this.html);
     });
 
 
@@ -161,7 +165,7 @@ coreHelpers = function (ghost) {
         truncateOptions = _.pick(truncateOptions, ["words", "characters"]);
 
         /*jslint regexp:true */
-        excerpt = String(this.content).replace(/<\/?[^>]+>/gi, "");
+        excerpt = String(this.html).replace(/<\/?[^>]+>/gi, "");
         /*jslint regexp:false */
 
         if (!truncateOptions.words && !truncateOptions.characters) {
@@ -214,6 +218,40 @@ coreHelpers = function (ghost) {
         });
     });
 
+    ghost.registerThemeHelper('meta_title', function (options) {
+        var title, blog;
+        blog = ghost.blogGlobals();
+        if (_.isString(this.path)) {
+            if (!this.path || this.path === '/' || this.path === '' || this.path.match(/\/page/)) {
+                blog = ghost.blogGlobals();
+                title = blog.title;
+            } else {
+                title = this.post.title;
+            }
+        }
+
+        return ghost.doFilter('meta_title', title, function (title) {
+            return new hbs.handlebars.SafeString(title.trim());
+        });
+    });
+
+    ghost.registerThemeHelper('meta_description', function (options) {
+        var description, blog;
+        blog = ghost.blogGlobals();
+        if (_.isString(this.path)) {
+            if (!this.path || this.path === '/' || this.path === '' || this.path.match(/\/page/)) {
+                blog = ghost.blogGlobals();
+                description = blog.description;
+            } else {
+                description = '';
+            }
+        }
+
+        return ghost.doFilter('meta_description', description, function (description) {
+            return new hbs.handlebars.SafeString(description.trim());
+        });
+    });
+
     ghost.registerThemeHelper('ghost_foot', function (options) {
         var foot = [];
         foot.push('<script src="/shared/vendor/jquery/jquery.js"></script>');
@@ -234,7 +272,7 @@ coreHelpers = function (ghost) {
     ghost.registerThemeHelper('e', function (key, defaultString, options) {
         var output;
 
-        if (ghost.settings().defaultLang === 'en' && _.isEmpty(options.hash) && !ghost.settings().forceI18n) {
+        if (ghost.settings('defaultLang') === 'en' && _.isEmpty(options.hash) && !ghost.settings('forceI18n')) {
             output = defaultString;
         } else {
             output = ghost.polyglot().t(key, options.hash);
@@ -315,6 +353,32 @@ coreHelpers = function (ghost) {
             ret = inverse(this);
         }
         return ret;
+    });
+
+    // A helper for inserting the javascript tags with version hashes
+    ghost.registerThemeHelper("ghostScriptTags", function () {
+        var scriptFiles = [];
+
+        if (isProduction) {
+            scriptFiles.push("ghost.min.js");
+        } else {
+            scriptFiles = [
+                "vendor.js",
+                "helpers.js",
+                "templates.js",
+                "models.js",
+                "views.js"
+            ];
+        }
+
+        scriptFiles = _.map(scriptFiles, function (fileName) {
+            return scriptTemplate({
+                name: fileName,
+                version: version
+            });
+        });
+
+        return scriptFiles.join("");
     });
 
     // ## Template driven helpers

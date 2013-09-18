@@ -1,6 +1,6 @@
 
 <header id="global-header" class="navbar">
-    <a class="ghost-logo" href="http://vip.tryghost.org" data-off-canvas="left"><span class="hidden">Ghost</span></a>{{! TODO: Change this to actual Ghost homepage }}
+    <a class="ghost-logo" href="{{url absolute="true"}}" data-off-canvas="left"><span class="hidden">Ghost </span></a>{{! TODO: Change this to actual Ghost homepage }}
     <nav id="global-nav" role="navigation">
         <ul id="main-menu" >
             {{#each adminNav}}
@@ -9,11 +9,11 @@
 
             <li id="usermenu" class="subnav">
                 <a href="#" data-toggle="ul" class="dropdown">
-                    <img class="avatar" src="{{#if currentUser.profile}}{{currentUser.profile}}{{else}}/public/img/user.jpg{{/if}}" alt="Avatar" />
+                    <img class="avatar" src="{{#if currentUser.profile}}{{currentUser.profile}}{{else}}/shared/img/user-image.png{{/if}}" alt="Avatar" />
                     <span class="name">{{#if currentUser.name}}{{currentUser.name}}{{else}}Ghost{{/if}} v{{version}}</span>
                 </a>
                 <ul class="overlay">
-                    <li class="usermenu-profile"><a href="/ghost/settings/user">Your Profile</a></li>
+                    <li class="usermenu-profile"><a href="/ghost/settings/user/">Your Profile</a></li>
                     <li class="divider"></li>
                     <li class="usermenu-help"><a href="http://forum.tryghost.org">Help / Support</a></li>
                     <li class="divider"></li>

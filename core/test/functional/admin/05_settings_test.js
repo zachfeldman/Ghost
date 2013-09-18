@@ -3,9 +3,9 @@
 casper.test.begin("Settings screen is correct", 15, function suite(test) {
     test.filename = "settings_test.png";
 
-    casper.start(url + "ghost/settings", function testTitleAndUrl() {
+    casper.start(url + "ghost/settings/", function testTitleAndUrl() {
         test.assertTitle("", "Ghost admin has no title");
-        test.assertUrlMatch(/ghost\/settings\/general$/, "Ghost doesn't require login this time");
+        test.assertUrlMatch(/ghost\/settings\/general\/$/, "Ghost doesn't require login this time");
     }).viewport(1280, 1024);
 
     casper.then(function testViews() {
@@ -117,16 +117,16 @@ casper.test.begin("User settings screen validates email", 6, function suite(test
 
     test.filename = "user_settings_test.png";
 
-    casper.start(url + "ghost/settings/user", function testTitleAndUrl() {
+    casper.start(url + "ghost/settings/user/", function testTitleAndUrl() {
         test.assertTitle("", "Ghost admin has no title");
-        test.assertUrlMatch(/ghost\/settings\/user$/, "Ghost doesn't require login this time");
+        test.assertUrlMatch(/ghost\/settings\/user\/$/, "Ghost doesn't require login this time");
     }).viewport(1280, 1024);
 
     casper.then(function setEmailToInvalid() {
         email = casper.getElementInfo('#user-email').attributes.value;
         brokenEmail = email.replace('.', '-');
 
-        casper.fillSelectors('.user-details-container', {
+        casper.fillSelectors('.user-profile', {
             '#user-email': brokenEmail
         }, false);
     });
@@ -143,7 +143,7 @@ casper.test.begin("User settings screen validates email", 6, function suite(test
     });
 
     casper.then(function resetEmailToValid() {
-        casper.fillSelectors('.user-details-container', {
+        casper.fillSelectors('.user-profile', {
             '#user-email': email
         }, false);
     });

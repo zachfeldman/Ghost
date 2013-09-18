@@ -8,17 +8,17 @@ var fs = require('fs'),
 I18n = function (ghost) {
 
     // TODO: validate
-    var lang = ghost.settings().defaultLang,
+    var lang = ghost.settings('defaultLang'),
         path = ghost.paths().lang,
         langFilePath = path + lang + '.json';
 
     return function (req, res, next) {
 
-        if (lang === 'en') {
+        if (lang === 'en_US') {
             // TODO: do stuff here to optimise for en
 
             // Make jslint empty block error go away
-            lang = 'en';
+            lang = 'en_US';
         }
 
         /** TODO: potentially use req.acceptedLanguages rather than the default
@@ -26,8 +26,8 @@ I18n = function (ghost) {
         *   TODO: switch this mess to be promise driven */
         fs.stat(langFilePath, function (error) {
             if (error) {
-                console.log('No language file found for language ' + lang + '. Defaulting to en');
-                lang = 'en';
+                console.log('No language file found for language ' + lang + '. Defaulting to en_US');
+                lang = 'en_US';
             }
 
             fs.readFile(langFilePath, function (error, data) {

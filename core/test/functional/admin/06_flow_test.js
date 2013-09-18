@@ -6,8 +6,8 @@
 casper.test.begin("Ghost edit draft flow works correctly", 7, function suite(test) {
     test.filename = "flow_test.png";
 
-    casper.start(url + "ghost/editor", function then() {
-        test.assertUrlMatch(/ghost\/editor$/, "Ghost doesn't require login this time");
+    casper.start(url + "ghost/editor/", function then() {
+        test.assertUrlMatch(/ghost\/editor\/$/, "Ghost doesn't require login this time");
     }).viewport(1280, 1024);
 
     // First, create a new draft post
@@ -21,7 +21,7 @@ casper.test.begin("Ghost edit draft flow works correctly", 7, function suite(tes
         this.echo("I've waited for 1 seconds.");
     });
 
-    casper.thenClick('.button-save');
+    casper.thenClick('.js-publish-button');
     casper.waitForResource(/posts/);
 
     casper.waitForSelector('.notification-success', function onSuccess() {
@@ -46,7 +46,7 @@ casper.test.begin("Ghost edit draft flow works correctly", 7, function suite(tes
         test.assertUrlMatch(/editor/, "Ghost sucessfully loaded the editor page again");
     });
 
-    casper.thenClick('.button-save');
+    casper.thenClick('.js-publish-button');
     casper.waitForResource(/posts/);
 
     casper.waitForSelector('.notification-success', function onSuccess() {

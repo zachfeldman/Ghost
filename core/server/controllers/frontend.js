@@ -7,15 +7,18 @@
 var Ghost = require('../../ghost'),
     api = require('../api'),
     RSS = require('rss'),
+    _ = require('underscore'),
+    errors = require('../errorHandling'),
+    when = require('when'),
 
     ghost = new Ghost(),
     frontendControllers;
 
 frontendControllers = {
-    'homepage': function (req, res) {
+    'homepage': function (req, res, next) {
         // Parse the page number
         var pageParam = req.params.page !== undefined ? parseInt(req.params.page, 10) : 1,
-            postsPerPage = parseInt(ghost.settings().postsPerPage, 10),
+            postsPerPage = parseInt(ghost.settings('postsPerPage'), 10),
             options = {};
 
         // No negative pages
@@ -54,71 +57,85 @@ frontendControllers = {
             ghost.doFilter('prePostsRender', page.posts, function (posts) {
                 res.render('index', {posts: posts, pagination: {page: page.page, prev: page.prev, next: page.next, limit: page.limit, total: page.total, pages: page.pages}});
             });
+        }).otherwise(function (err) {
+            return next(new Error(err));
         });
     },
-    'single': function (req, res) {
+    'single': function (req, res, next) {
         api.posts.read({'slug': req.params.slug}).then(function (post) {
-            ghost.doFilter('prePostsRender', post.toJSON(), function (post) {
-                res.render('post', {post: post});
-            });
+            if (post) {
+                ghost.doFilter('prePostsRender', post.toJSON(), function (post) {
+                    res.render('post', {post: post});
+                });
+            } else {
+                next();
+            }
+
+        }).otherwise(function (err) {
+            return next(new Error(err));
         });
     },
-    'rss': function (req, res) {
+    'rss': function (req, res, next) {
         // Initialize RSS
-        var siteUrl = ghost.config().env[process.env.NODE_ENV].url,
+        var siteUrl = ghost.config().url,
+            pageParam = req.params.page !== undefined ? parseInt(req.params.page, 10) : 1,
+            feed;
+        //needs refact for multi user to not use first user as default
+        api.users.read({id : 1}).then(function (user) {
             feed = new RSS({
-                title: ghost.settings().title,
-                description: ghost.settings().description,
+                title: ghost.settings('title'),
+                description: ghost.settings('description'),
                 generator: 'Ghost v' + res.locals.version,
-                author: ghost.settings().author,
+                author: user ? user.attributes.name : null,
                 feed_url: siteUrl + '/rss/',
                 site_url: siteUrl,
                 ttl: '60'
-            }),
-            // Parse the page number
-            pageParam = req.params.page !== undefined ? parseInt(req.params.page, 10) : 1;
-
-        // No negative pages
-        if (isNaN(pageParam) || pageParam < 1) {
-            return res.redirect("/rss/");
-        }
-
-        if (pageParam === 1 && req.route.path === '/rss/:page/') {
-            return res.redirect('/rss/');
-        }
-
-        api.posts.browse({page: pageParam}).then(function (page) {
-            var maxPage = page.pages;
-
-            // A bit of a hack for situations with no content.
-            if (maxPage === 0) {
-                maxPage = 1;
-                page.pages = 1;
-            }
-
-            // If page is greater than number of pages we have, redirect to last page
-            if (pageParam > maxPage) {
-                return res.redirect("/rss/" + maxPage + "/");
-            }
-
-            ghost.doFilter('prePostsRender', page.posts, function (posts) {
-                posts.forEach(function (post) {
-                    var item = {
-                        title:  post.title,
-                        guid: post.uuid,
-                        url: siteUrl + '/' + post.slug + '/',
-                        date: post.published_at
-                    };
-
-                    if (post.meta_description !== null) {
-                        item.push({ description: post.meta_description });
-                    }
-
-                    feed.item(item);
-                });
-                res.set('Content-Type', 'text/xml');
-                res.send(feed.xml());
             });
+
+            // No negative pages
+            if (isNaN(pageParam) || pageParam < 1) {
+                return res.redirect("/rss/");
+            }
+
+            if (pageParam === 1 && req.route.path === '/rss/:page/') {
+                return res.redirect('/rss/');
+            }
+
+            api.posts.browse({page: pageParam}).then(function (page) {
+                var maxPage = page.pages;
+
+                // A bit of a hack for situations with no content.
+                if (maxPage === 0) {
+                    maxPage = 1;
+                    page.pages = 1;
+                }
+
+                // If page is greater than number of pages we have, redirect to last page
+                if (pageParam > maxPage) {
+                    return res.redirect("/rss/" + maxPage + "/");
+                }
+
+                ghost.doFilter('prePostsRender', page.posts, function (posts) {
+                    posts.forEach(function (post) {
+                        var item = {
+                            title:  _.escape(post.title),
+                            guid: post.uuid,
+                            url: siteUrl + '/' + post.slug + '/',
+                            date: post.published_at
+                        };
+
+                        if (post.meta_description !== null) {
+                            item.push({ description: post.meta_description });
+                        }
+
+                        feed.item(item);
+                    });
+                    res.set('Content-Type', 'text/xml');
+                    res.send(feed.xml());
+                });
+            });
+        }).otherwise(function (err) {
+            return next(new Error(err));
         });
     }
 };

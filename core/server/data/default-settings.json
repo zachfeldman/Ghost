@@ -1,62 +1,61 @@
-[
-    {
-        "key":          "title",
-        "value":        "Ghost",
-        "type":         "blog"
+{
+    "core": {
+        "databaseVersion": {
+            "defaultValue": "000"
+        }
     },
-    {
-        "key":          "description",
-        "value":        "Just a blogging platform.",
-        "type":         "blog"
+    "blog": {
+        "title": {
+            "defaultValue": "Ghost"
+        },
+        "description": {
+            "defaultValue": "Just a blogging platform."
+        },
+        "email": {
+            "defaultValue": "ghost@example.com",
+            "validations": {
+                "notNull": true,
+                "isEmail": true
+            }
+        },
+        "logo": {
+            "defaultValue": ""
+        },
+        "cover": {
+            "defaultValue": ""
+        },
+        "defaultLang": {
+            "defaultValue": "en_US",
+            "validations": {
+                "notNull": true
+            }
+        },
+        "postsPerPage": {
+            "defaultValue": "6",
+            "validations": {
+                "notNull": true,
+                "isNumeric": true
+            }
+        },
+        "forceI18n": {
+            "defaultValue": "true",
+            "validations": {
+                "notNull": true,
+                "isIn": ["true", "false"]
+            }
+        }
     },
-    {
-        "key":          "email",
-        "value":        "ghost@example.com",
-        "type":         "general"
+    "theme": {
+        "activeTheme": {
+            "defaultValue": "casper"
+        }
     },
-    {
-        "key":          "activePlugins",
-        "value":        "",
-        "type":         "general"
-    },
-    {
-        "key":          "activeTheme",
-        "value":        "content/themes/casper",
-        "type":         "general"
-    },
-    {
-        "key":          "currentVersion",
-        "value":        "002",
-        "type":         "core"
-    },
-    {
-        "key":          "installedPlugins",
-        "value":        "[]",
-        "type":         "core"
-    },
-    {
-        "key":          "logo",
-        "value":        "",
-        "type":         "blog"
-    },
-    {
-        "key":          "cover",
-        "value":        "",
-        "type":         "blog"
-    },
-    {
-        "key":          "defaultLang",
-        "value":        "en",
-        "type":         "blog"
-    },
-    {
-        "key":          "forceI18n",
-        "value":        true,
-        "type":         "blog"
-    },
-    {
-        "key":          "postsPerPage",
-        "value":        "6",
-        "type":         "blog"
+    "plugin": {
+        "activePlugins": {
+            "defaultValue": "[]"
+        },
+        "installedPlugins": {
+            "defaultValue": "[]"
+        }
     }
-]
+}

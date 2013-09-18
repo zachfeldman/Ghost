@@ -18,7 +18,7 @@ GhostMailer.prototype.init = function (ghost) {
     this.api = require('./api');
 
     var self = this,
-        config = ghost.config().env[process.env.NODE_ENV];
+        config = ghost.config();
 
     if (config.mail && config.mail.transport && config.mail.options) {
         this.createTransport(config);
@@ -66,7 +66,7 @@ GhostMailer.prototype.usingSendmail = function () {
         message: [
             "Ghost is attempting to use your server's <b>sendmail</b> to send e-mail.",
             "It is recommended that you explicitly configure an e-mail service,",
-            "see <a href=\"https://github.com/TryGhost/Ghost/wiki/\">instructions in the wiki</a>."
+            "See <a href=\"http://docs.ghost.org/mail\">http://docs.ghost.org/mail</a> for instructions"
         ].join(' '),
         status: 'persistent',
         id: 'ghost-mail-fallback'
@@ -78,8 +78,7 @@ GhostMailer.prototype.emailDisabled = function () {
         type: 'warn',
         message: [
             "Ghost is currently unable to send e-mail.",
-            "See <a href=\"https://github.com/TryGhost/Ghost/wiki/\">instructions for configuring",
-            "an e-mail service</a>."
+            "See <a href=\"http://docs.ghost.org/mail\">http://docs.ghost.org/mail</a> for instructions"
         ].join(' '),
         status: 'persistent',
         id: 'ghost-mail-disabled'
@@ -96,8 +95,8 @@ GhostMailer.prototype.send = function (message) {
         return when.reject(new Error('Email Error: Incomplete message data.'));
     }
 
-    var from = 'ghost-mailer@' + url.parse(this.ghost.config().env[process.env.NODE_ENV].url).hostname,
-        to = message.to || this.ghost.settings().email,
+    var from = 'ghost-mailer@' + url.parse(this.ghost.config().url).hostname,
+        to = message.to || this.ghost.settings('email'),
         sendMail = nodefn.lift(this.transport.sendMail.bind(this.transport));
 
     message = _.extend(message, {

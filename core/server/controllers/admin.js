@@ -78,30 +78,35 @@ adminControllers = {
             tmp_path = req.files.uploadimage.path,
             dir = path.join('content/images', year, month),
             ext = path.extname(req.files.uploadimage.name).toLowerCase(),
-            basename = path.basename(req.files.uploadimage.name, ext);
+            basename = path.basename(req.files.uploadimage.name, ext).replace(/[\W]/gi, '_');
 
         function renameFile(target_path) {
             // adds directories recursively
             fs.mkdirs(dir, function (err) {
                 if (err) {
-                    errors.logError(err);
-                } else {
-                    fs.copy(tmp_path, target_path, function (err) {
-                        if (err) {
-                            errors.logError(err);
-                        } else {
-                            // TODO: should delete temp file at tmp_path. Or just move the file instead of copy.
-                            // the src for the image must be in URI format, not a file system path, which in Windows uses \
-                            var src = path.join('/', target_path).replace(new RegExp('\\' + path.sep, 'g'), '/');
-                            res.send(src);
-                        }
-                    });
+                    return errors.logError(err);
                 }
+
+                fs.copy(tmp_path, target_path, function (err) {
+                    if (err) {
+                        return errors.logError(err);
+                    }
+
+                    fs.unlink(tmp_path, function (e) {
+                        if (err) {
+                            return errors.logError(err);
+                        }
+
+                        // the src for the image must be in URI format, not a file system path, which in Windows uses \
+                        var src = path.join('/', target_path).replace(new RegExp('\\' + path.sep, 'g'), '/');
+                        return res.send(src);
+                    });
+                });
             });
         }
 
         // TODO: is it better to use file type eg. image/png?
-        if (ext === ".jpg" || ext === ".png" || ext === ".gif") {
+        if (ext === ".jpg" || ext === ".jpeg"  || ext === ".png" || ext === ".gif") {
             getUniqueFileName(dir, basename, ext, null, function (filename) {
                 renameFile(filename);
             });
@@ -167,16 +172,17 @@ adminControllers = {
             password = req.body.password;
 
         api.users.add({
-            full_name: name,
-            email_address: email,
+            name: name,
+            email: email,
             password: password
         }).then(function (user) {
-
-            if (req.session.user === undefined) {
-                req.session.user = user.id;
-            }
-            res.json(200, {redirect: '/ghost/'});
-        }, function (error) {
+            api.settings.edit('email', email).then(function () {
+                if (req.session.user === undefined) {
+                    req.session.user = user.id;
+                }
+                res.json(200, {redirect: '/ghost/'});
+            });
+        }).otherwise(function (error) {
             res.json(401, {error: error.message});
         });
 
@@ -200,8 +206,8 @@ adminControllers = {
                     html: "<p><strong>Hello!</strong></p>" +
                           "<p>You've reset your password. Here's the new one: " + user.newPassword + "</p>" +
                           "<p>Ghost <br/>" +
-                          '<a href="' + ghost.config().env[process.env.NODE_ENV].url + '">' +
-                           ghost.config().env[process.env.NODE_ENV].url + '</a></p>'
+                          '<a href="' + ghost.config().url + '">' +
+                           ghost.config().url + '</a></p>'
                 };
 
             return ghost.mail.send(message);
@@ -259,7 +265,17 @@ adminControllers = {
             adminNav: setSelected(adminNavbar, 'content')
         });
     },
-    'settings': function (req, res) {
+    'settings': function (req, res, next) {
+
+        // TODO: Centralise list/enumeration of settings panes, so we don't
+        // run into trouble in future.
+        var allowedSections = ["", "general", "user"],
+            section = req.url.replace(/(^\/ghost\/settings[\/]*|\/$)/ig, "");
+
+        if (allowedSections.indexOf(section) < 0) {
+            return next();
+        }
+
         res.render('settings', {
             bodyClass: 'settings',
             adminNav: setSelected(adminNavbar, 'settings')
@@ -273,15 +289,7 @@ adminControllers = {
             });
         },
         'export': function (req, res) {
-            // Get current version from settings
-            api.settings.read({ key: "currentVersion" })
-                .then(function (setting) {
-                    // Export the current versions data
-                    return dataExport(setting.value);
-                }, function () {
-                    // If no setting, assume 001
-                    return dataExport("001");
-                })
+            return dataExport()
                 .then(function (exportedData) {
                     // Save the exported data to the file system for download
                     var fileName = path.resolve(__dirname + '/../../server/data/export/exported-' + (new Date().getTime()) + '.json');
@@ -324,13 +332,13 @@ adminControllers = {
             }
 
             // Get the current version for importing
-            api.settings.read({ key: "currentVersion" })
+            api.settings.read({ key: "databaseVersion" })
                 .then(function (setting) {
                     return when(setting.value);
                 }, function () {
                     return when("001");
                 })
-                .then(function (currentVersion) {
+                .then(function (databaseVersion) {
                     // Read the file contents
                     return nodefn.call(fs.readFile, req.files.importfile.path)
                         .then(function (fileContents) {
@@ -348,7 +356,7 @@ adminControllers = {
                             }
 
                             // Import for the current version
-                            return dataImport(currentVersion, importData);
+                            return dataImport(databaseVersion, importData);
                         });
                 })
                 .then(function importSuccess() {

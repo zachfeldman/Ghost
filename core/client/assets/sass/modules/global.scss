@@ -392,7 +392,7 @@ nav {
     padding:12px 15px;
     color: lighten($grey, 10%);
     @include box-sizing(border-box);
-    
+
     &:hover {text-decoration:none;}
 }
 
@@ -889,7 +889,7 @@ nav {
    Notifications
    ========================================================================== */
 
-#flashbar {
+#notifications {
     @include breakpoint($mobile) {
         position: fixed;
         top: 0;
@@ -941,6 +941,11 @@ nav {
         &:hover { color: #fff; }
 
     }
+
+    a {
+        color: inherit;
+        text-decoration: underline;
+    }
 }
 
 .notification-success {
@@ -979,30 +984,40 @@ nav {
    Modals
    ========================================================================== */
 #modal-container {
-    &.active {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 999;
-        @include transition(all 0.15s linear 0s);
-        @include transform(translateZ(0));
+    @include box-sizing(border-box);
+    display: none;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    overflow-x: auto;
+    overflow-y: scroll;
+    z-index: 1040;
+    pointer-events: none;
+    @include transition(all 0.15s linear 0s);
+    @include transform(translateZ(0));
+}
 
-        &.dark {
-            background: rgba(0,0,0,0.4);
-        }
+.fade {
+    opacity: 0;
+    @include transition(opacity 0.2s linear 0s);
+    @include transform(translateZ(0));
 
-        .modal-background {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 999;
-        }
-
+    &.in {
+        opacity: 1;
     }
+}
+
+.modal-background {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1030;
 }
 
 body.blur > *:not(#modal-container) {
@@ -1017,30 +1032,29 @@ body.blur > *:not(#modal-container) {
 
 %modal, .modal {
     @include box-sizing(border-box);
-    max-height: 90%;
+    left: 50%;
+    right: auto;
     width: 450px;
-    padding: 0;
-    background: #fff;
-    border-radius: $rounded;
-    overflow:auto;
-    z-index: 1001;
-    box-shadow: rgba(0,0,0,0.2) 0 0 0 6px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 30px;
+    padding-bottom: 30px;
+    z-index: 1050;
+    pointer-events: auto;
 
-    &.fade {
-        opacity: 0;
-        @include transition(opacity 0.2s linear 0s);
 
-        &.in {
-            opacity: 1;
-        }
-    }
+    @include breakpoint($tablet) {
+        width: auto;
+        padding: 10px;
+    };
 
     button {
         min-width: 100px;
     }
 
-    @include breakpoint($mobile) {
+    @include breakpoint($tablet) {
         width: 100%;
+        margin-left: 0;
     }
 }
 
@@ -1050,16 +1064,49 @@ body.blur > *:not(#modal-container) {
 
 .modal-action {
     @extend %modal;
+    padding: 60px 0 30px;
+
+    @include breakpoint($tablet) {
+        padding: 30px 0;
+    }
 
     .modal-footer {
         margin-top: 20px;
     }
 }
 
+.modal-content {
+    @include box-sizing(padding-box);
+    position: relative;
+    background-clip: padding-box;
+    background-color: #FFFFFF;
+    border-radius: $rounded;
+    box-shadow: rgba(0,0,0,0.2) 0 0 0 6px;
+
+    .close {
+        @include box-sizing(border-box);
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        width: 16px;
+        min-height: 16px;
+        padding: 0;
+        margin: 0;
+        border: none;
+        z-index: 9999;
+
+        @include icon($i-x, 1em, $midgrey);
+        @include transition(opacity 0.3s linear);
+
+        &:hover {
+            color: $darkgrey;
+        }
+    }
+}
 .modal-header {
     position: relative;
     padding: 20px;
-    border-bottom: 1px solid $lightgrey;
+    border-bottom: 1px solid $lightbrown;
 
     h1 {
         display: inline-block;
@@ -1067,31 +1114,13 @@ body.blur > *:not(#modal-container) {
         font-size: 1.5em;
         font-weight: bold;
     }
-
-    .close {
-        @include box-sizing(border-box);
-        position: absolute;
-        top: 10px;
-        right: 20px;
-        width: 16px;
-        min-height: 16px;
-        padding: 0;
-        margin: 0;
-        border: none;
-        opacity: 0.4;
-
-        @include icon($i-close, 1em, $midgrey);
-        @include transition(opacity 0.3s linear);
-
-        &:hover{
-           opacity: 1;
-        }
-    }
 }
 
-.modal-content {
-    padding: 0 20px;
+.modal-body {
+    position: relative;
     min-height: 100px;
+    padding: 0 20px;
+    overflow-y: auto;
 }
 
 .modal-footer {
@@ -1102,7 +1131,7 @@ body.blur > *:not(#modal-container) {
 .modal-style-wide {
     width: 550px;
 
-    @include breakpoint($mobile) {
+    @include breakpoint($tablet) {
         width: 100%;
     }
 }
@@ -1116,13 +1145,14 @@ body.blur > *:not(#modal-container) {
 
 main {
     position: absolute;
-    bottom: 0;
     top: 55px;
-    left: 15px;
     right: 15px;
+    bottom: 0;
+    left: 15px;
     padding: 0;
 
     @include breakpoint($mobile) {
+        top: 40px;
         left:0;
         right:0;
     }
@@ -1154,15 +1184,35 @@ main {
     background: -o-linear-gradient(top,  rgba(255,255,255,1) 0%,rgba(255,255,255,1) 25%,rgba(255,255,255,0.90) 100%);
     background: -ms-linear-gradient(top,  rgba(255,255,255,1) 0%,rgba(255,255,255,1) 25%,rgba(255,255,255,0.90) 100%);
     background: linear-gradient(to bottom,  rgba(255,255,255,1) 0%,rgba(255,255,255,1) 25%,rgba(255,255,255,0.90) 100%);
-    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#f2ffffff',GradientType=0 );
 
     button, .button {
-        display:inline-block;
+        display: inline-block;
         font-size: 10px;
         min-height: 20px;
         height: 20px;
         padding: 3px 4px;
         vertical-align: top;
+
+        &.button-back {
+            position: relative;
+            top: -2px;
+            left: 3px;
+            display: none;
+            padding: 0 6px 0 3px;
+
+            &:active {
+                box-shadow: none;
+            }
+
+            &:before {
+                left: -8px;
+                border-width: 10px 8px 10px 0;
+            }
+
+            @include breakpoint($tablet) {
+                display: inline-block;
+            }
+        }
     }
 
     a {
@@ -1230,7 +1280,15 @@ main {
             color: $darkgrey;
         }
     }
-
+    .description {
+        margin-top: 10px;
+        margin-bottom: -40px;
+    }
+    .centre{
+        position: relative;
+        top: 50px;
+        margin-bottom: -6px;
+    }
     .media {
         @include icon($i-image, 60px, darken($lightbrown, 3%)) {
             display:inline-block;
@@ -1268,19 +1326,53 @@ main {
         color: $brown;
         text-decoration: none;
     }
-
-    input {
+    .image-cancel {
+        @include icon($i-x, 16px);
         position: absolute;
-        right: 0;
-        margin: 0;
-        opacity: 0;
-        @include transform-origin(right);
-        @include transform( scale(14));
-        font-size: 23px;
-        direction: ltr;
-        cursor: pointer;
-    }
+        color: white;
+        text-shadow: rgba(0,0,0,0.3) 0 0 3px;
+        top: 10px;
+        right: 10px;
+        text-decoration: none;
 
+        &:hover {
+            cursor: pointer;
+            color: white;
+        }
+    }
+    input {
+        &.main{
+            position: absolute;
+            right: 0;
+            margin: 0;
+            opacity: 0;
+            @include transform-origin(right);
+            @include transform( scale(14));
+            font-size: 23px;
+            direction: ltr;
+            cursor: pointer;
+            &.right {
+                position: relative;
+                right: 9999px;
+            }
+        }
+        &.url{
+            font: -webkit-small-control;
+            box-sizing: border-box;
+            width: 276px;
+            padding: 5px 7px;
+            margin: 0;
+            margin-top: -10px;
+            margin-bottom: -1px; outline: 0;
+            font-size: 1.1em;
+            line-height: 1.4em;
+            background: #fff;
+            border: #e3e1d5 1px solid;
+            border-radius: 4px;
+            -webkit-transition: all 0.15s ease-in-out;
+            -moz-transition: all 0.15s ease-in-out;
+        }
+    }
     .progress {
         position: relative;
         top: -22px;
@@ -1351,15 +1443,19 @@ main {
     }
 
     .image-cancel {
-        @include icon($i-x, 16px);
+        @include icon($i-trash, 11px);
         position: absolute;
-        color: white;
-        text-shadow: rgba(0,0,0,0.3) 0 0 3px;
         top: 10px;
         right: 10px;
+        padding: 8px;
+        background: rgba(0,0,0,0.3);
+        border-radius: $rounded;
+        color: white;
         text-decoration: none;
+        line-height: 0;
 
         &:hover {
+            background: rgba(0,0,0,0.5);
             cursor: pointer;
             color: white;
         }

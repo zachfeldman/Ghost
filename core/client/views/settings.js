@@ -57,10 +57,9 @@
 
         showContent: function (id) {
             var self = this,
-                model,
-                themes;
+                model;
 
-            Ghost.router.navigate('/settings/' + id);
+            Ghost.router.navigate('/settings/' + id + '/');
             Ghost.trigger('urlchange');
             if (this.pane && id === this.pane.el.id) {
                 return;
@@ -70,13 +69,9 @@
             this.pane = new Settings[id]({ el: '.settings-content'});
 
             if (!this.models.hasOwnProperty(this.pane.options.modelType)) {
-                themes = this.models.Themes = new Ghost.Models.Themes();
                 model = this.models[this.pane.options.modelType] = new Ghost.Models[this.pane.options.modelType]();
-                themes.fetch().then(function () {
-                    model.fetch().then(function () {
-                        model.set({availableThemes: themes.toJSON()});
-                        self.renderPane(model);
-                    });
+                model.fetch().then(function () {
+                    self.renderPane(model);
                 });
             } else {
                 model = this.models[this.pane.options.modelType];
@@ -121,6 +116,7 @@
             });
         },
         saveSuccess: function (model, response, options) {
+            Ghost.notifications.clearEverything();
             // TODO: better messaging here?
             Ghost.notifications.addItem({
                 type: 'success',
@@ -129,6 +125,7 @@
             });
         },
         saveError: function (model, xhr) {
+            Ghost.notifications.clearEverything();
             Ghost.notifications.addItem({
                 type: 'error',
                 message: Ghost.Views.Utils.getRequestErrorMessage(xhr),
@@ -136,6 +133,7 @@
             });
         },
         validationError: function (message) {
+            Ghost.notifications.clearEverything();
             Ghost.notifications.addItem({
                 type: 'error',
                 message: message,
@@ -157,8 +155,7 @@
         },
 
         saveSettings: function () {
-            var themes = this.model.get('availableThemes'),
-                title = this.$('#blog-title').val(),
+            var title = this.$('#blog-title').val(),
                 description = this.$('#blog-description').val(),
                 email = this.$('#email-address').val(),
                 postsPerPage = this.$('#postsPerPage').val();
@@ -180,13 +177,9 @@
             if (Ghost.Validate._errors.length > 0) {
                 Ghost.Validate.handleErrors();
             } else {
-
-                this.model.unset('availableThemes');
                 this.model.save({
                     title: title,
                     description: description,
-                    logo: this.$('#blog-logo').attr("src"),
-                    cover: this.$('#blog-cover').attr("src"),
                     email: email,
                     postsPerPage: postsPerPage,
                     activeTheme: this.$('#activeTheme').val()
@@ -194,30 +187,32 @@
                     success: this.saveSuccess,
                     error: this.saveError
                 });
-                this.model.set({availableThemes: themes});
             }
         },
-        showLogo: function () {
+        showLogo: function (e) {
+            e.preventDefault();
             var settings = this.model.toJSON();
-            this.showUpload('#logo', 'logo', settings.logo);
+            this.showUpload('logo', settings.logo);
         },
-        showCover: function () {
+        showCover: function (e) {
+            e.preventDefault();
             var settings = this.model.toJSON();
-            this.showUpload('#cover', 'cover', settings.icon);
+            this.showUpload('cover', settings.cover);
         },
-        showUpload: function (id, key, src) {
-            var self = this, upload = new Ghost.Models.uploadModal({'id': id, 'key': key, 'src': src, 'accept': {
+        showUpload: function (key, src) {
+            var self = this, upload = new Ghost.Models.uploadModal({'key': key, 'src': src, 'accept': {
                 func: function () { // The function called on acceptance
-                    var data = {},
-                        themes;
-                    data[key] = this.$('.js-upload-target').attr('src');
-                    themes = self.model.get('availableThemes');
-                    self.model.unset('availableThemes');
+                    var data = {};
+                    if (this.$('#uploadurl').val()) {
+                        data[key] = this.$('#uploadurl').val();
+                    } else {
+                        data[key] = this.$('.js-upload-target').attr('src');
+                    }
+
                     self.model.save(data, {
                         success: self.saveSuccess,
                         error: self.saveError
                     });
-                    self.model.set({availableThemes: themes});
                     self.render();
                     return true;
                 },
@@ -248,23 +243,28 @@
         events: {
             'click .button-save': 'saveUser',
             'click .button-change-password': 'changePassword',
-            'click .js-modal-cover-picture': 'showCoverPicture',
-            'click .js-modal-profile-picture': 'showProfilePicture'
+            'click .js-modal-cover': 'showCover',
+            'click .js-modal-image': 'showImage'
         },
-        showCoverPicture: function () {
-            var user = this.model.toJSON();
-            this.showUpload('#user-cover-picture', 'cover_picture', user.cover_picture);
-        },
-        showProfilePicture: function (e) {
+        showCover: function (e) {
             e.preventDefault();
             var user = this.model.toJSON();
-            this.showUpload('#user-profile-picture', 'profile_picture', user.profile_picture);
+            this.showUpload('cover', user.cover);
         },
-        showUpload: function (id, key, src) {
-            var self = this, upload = new Ghost.Models.uploadModal({'id': id, 'key': key, 'src': src, 'accept': {
+        showImage: function (e) {
+            e.preventDefault();
+            var user = this.model.toJSON();
+            this.showUpload('image', user.image);
+        },
+        showUpload: function (key, src) {
+            var self = this, upload = new Ghost.Models.uploadModal({'key': key, 'src': src, 'accept': {
                 func: function () { // The function called on acceptance
                     var data = {};
-                    data[key] = this.$('.js-upload-target').attr('src');
+                    if (this.$('#uploadurl').val()) {
+                        data[key] = this.$('#uploadurl').val();
+                    } else {
+                        data[key] = this.$('.js-upload-target').attr('src');
+                    }
                     self.model.save(data, {
                         success: self.saveSuccess,
                         error: self.saveError
@@ -314,13 +314,11 @@
             } else {
 
                 this.model.save({
-                    'full_name':        userName,
-                    'email_address':    userEmail,
+                    'name':             userName,
+                    'email':            userEmail,
                     'location':         userLocation,
-                    'url':              userWebsite,
-                    'bio':              userBio,
-                    'profile_picture':  this.$('#user-profile-picture').attr('src'),
-                    'cover_picture':    this.$('#user-cover-picture').attr('src')
+                    'website':          userWebsite,
+                    'bio':              userBio
                 }, {
                     success: this.saveSuccess,
                     error: this.saveError
@@ -387,34 +385,6 @@
             });
 
             Settings.Pane.prototype.afterRender.call(this);
-        }
-    });
-
-    // ### User settings
-    Settings.users = Settings.Pane.extend({
-        id: 'users',
-        events: {
-        }
-    });
-
-    // ### Appearance settings
-    Settings.appearance = Settings.Pane.extend({
-        id: 'appearance',
-        events: {
-        }
-    });
-
-    // ### Services settings
-    Settings.services = Settings.Pane.extend({
-        id: 'services',
-        events: {
-        }
-    });
-
-    // ### Plugins settings
-    Settings.plugins = Settings.Pane.extend({
-        id: 'plugins',
-        events: {
         }
     });
 

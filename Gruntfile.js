@@ -3,10 +3,28 @@ var path = require('path'),
     semver = require("semver"),
     fs = require("fs"),
     path = require("path"),
+    _ = require('underscore'),
     spawn = require("child_process").spawn,
     buildDirectory = path.resolve(process.cwd(), '.build'),
     distDirectory =  path.resolve(process.cwd(), '.dist'),
-    _ = require('underscore'),
+    configLoader = require('./core/config-loader.js'),
+
+    buildGlob = [
+        '**',
+        '!docs/**',
+        '!node_modules/**',
+        '!content/images/**',
+        '!**/*.db*',
+        '!*.db*',
+        '!.sass*',
+        '!.af*',
+        '!.git*',
+        '!.groc*',
+        '!*.iml',
+        '!config.js',
+        '!.travis.yml'
+    ],
+
     configureGrunt = function (grunt) {
 
         // load all grunt tasks
@@ -38,6 +56,16 @@ var path = require('path'),
                     files: ['<%= paths.adminAssets %>/sass/**/*'],
                     tasks: ['sass:admin']
                 },
+                concat: {
+                    files: [
+                        'core/client/*.js',
+                        'core/client/helpers/*.js',
+                        'core/client/models/*.js',
+                        'core/client/tpl/*.js',
+                        'core/client/views/*.js'
+                    ],
+                    tasks: ['concat']
+                },
                 livereload: {
                     files: [
                         // Theme CSS
@@ -47,11 +75,7 @@ var path = require('path'),
                         // Admin CSS
                         '<%= paths.adminAssets %>/css/*.css',
                         // Admin JS
-                        'core/client/*.js',
-                        'core/client/helpers/*.js',
-                        'core/client/models/*.js',
-                        'core/client/tpl/*.js',
-                        'core/client/views/*.js'
+                        'core/built/scripts/*.js'
                     ],
                     options: {
                         livereload: true
@@ -240,9 +264,9 @@ var path = require('path'),
                         "out": "./docs/",
                         "glob": [
                             "README.md",
-                            "config.js",
+                            "config.example.js",
                             "index.js",
-                            "core/ghost.js",
+                            "core/*.js",
                             "core/server/**/*.js",
                             "core/shared/**/*.js",
                             "core/client/**/*.js"
@@ -259,49 +283,21 @@ var path = require('path'),
                 nightly: {
                     files: [{
                         expand: true,
-                        src: [
-                            '**',
-                            '!node_modules/**',
-                            '!core/server/data/*.db',
-                            '!.sass*',
-                            '!.af*',
-                            '!.git*',
-                            '!.groc*',
-                            '!.travis.yml'
-                        ],
+                        src: buildGlob,
                         dest: "<%= paths.nightlyBuild %>/<%= pkg.version %>/"
                     }]
                 },
                 weekly: {
                     files: [{
                         expand: true,
-                        src: [
-                            '**',
-                            '!node_modules/**',
-                            '!core/server/data/*.db',
-                            '!.sass*',
-                            '!.af*',
-                            '!.git*',
-                            '!.groc*',
-                            '!.travis.yml'
-                        ],
+                        src: buildGlob,
                         dest: "<%= paths.weeklyBuild %>/<%= pkg.version %>/"
                     }]
                 },
                 build: {
                     files: [{
                         expand: true,
-                        src: [
-                            '**',
-                            '!node_modules/**',
-                            '!core/server/data/*.db',
-                            '!.sass*',
-                            '!.af*',
-                            '!.git*',
-                            '!.groc*',
-                            '!.iml*',
-                            '!.travis.yml'
-                        ],
+                        src: buildGlob,
                         dest: "<%= paths.buildBuild %>/"
                     }]
                 }
@@ -341,6 +337,122 @@ var path = require('path'),
                     tagMessage: '<%= buildType %> Release %VERSION%',
                     pushTo: "origin build"
                 }
+            },
+
+            concat: {
+                dev: {
+                    files: {
+                        "core/built/scripts/vendor.js": [
+                            "core/shared/vendor/jquery/jquery.js",
+                            "core/shared/vendor/jquery/jquery-ui-1.10.3.custom.min.js",
+                            "core/client/assets/lib/jquery-utils.js",
+                            "core/client/assets/lib/uploader.js",
+                            "core/shared/vendor/underscore.js",
+                            "core/shared/vendor/backbone/backbone.js",
+                            "core/shared/vendor/handlebars/handlebars-runtime.js",
+                            "core/shared/vendor/moment.js",
+
+                            "core/client/assets/vendor/icheck/jquery.icheck.min.js",
+
+                            "core/shared/vendor/jquery/jquery.ui.widget.js",
+                            "core/shared/vendor/jquery/jquery.iframe-transport.js",
+                            "core/shared/vendor/jquery/jquery.fileupload.js",
+
+                            "core/client/assets/vendor/codemirror/codemirror.js",
+                            "core/client/assets/vendor/codemirror/addon/mode/overlay.js",
+                            "core/client/assets/vendor/codemirror/mode/markdown/markdown.js",
+                            "core/client/assets/vendor/codemirror/mode/gfm/gfm.js",
+                            "core/client/assets/vendor/showdown/showdown.js",
+                            "core/client/assets/vendor/showdown/extensions/ghostdown.js",
+                            "core/shared/vendor/showdown/extensions/github.js",
+                            "core/client/assets/vendor/shortcuts.js",
+                            "core/client/assets/vendor/validator-client.js",
+                            "core/client/assets/vendor/countable.js",
+                            "core/client/assets/vendor/to-title-case.js",
+                            "core/client/assets/vendor/packery.pkgd.min.js",
+                            "core/client/assets/vendor/fastclick.js"
+                        ],
+
+                        "core/built/scripts/helpers.js": [
+                            "core/client/init.js",
+
+                            "core/client/mobile-interactions.js",
+                            "core/client/toggle.js",
+                            "core/client/markdown-actions.js",
+                            "core/client/helpers/index.js"
+                        ],
+
+                        "core/built/scripts/templates.js": [
+                            "core/client/tpl/hbs-tpl.js"
+                        ],
+
+                        "core/built/scripts/models.js": [
+                            "core/client/models/**/*.js"
+                        ],
+
+                        "core/built/scripts/views.js": [
+                            "core/client/views/**/*.js",
+                            "core/client/router.js"
+                        ]
+                    }
+                },
+                prod: {
+                    files: {
+                        "core/built/scripts/ghost.js": [
+                            "core/shared/vendor/jquery/jquery.js",
+                            "core/shared/vendor/jquery/jquery-ui-1.10.3.custom.min.js",
+                            "core/client/assets/lib/jquery-utils.js",
+                            "core/client/assets/lib/uploader.js",
+                            "core/shared/vendor/underscore.js",
+                            "core/shared/vendor/backbone/backbone.js",
+                            "core/shared/vendor/handlebars/handlebars-runtime.js",
+                            "core/shared/vendor/moment.js",
+
+                            "core/client/assets/vendor/icheck/jquery.icheck.min.js",
+
+                            "core/shared/vendor/jquery/jquery.ui.widget.js",
+                            "core/shared/vendor/jquery/jquery.iframe-transport.js",
+                            "core/shared/vendor/jquery/jquery.fileupload.js",
+
+                            "core/client/assets/vendor/codemirror/codemirror.js",
+                            "core/client/assets/vendor/codemirror/addon/mode/overlay.js",
+                            "core/client/assets/vendor/codemirror/mode/markdown/markdown.js",
+                            "core/client/assets/vendor/codemirror/mode/gfm/gfm.js",
+                            "core/client/assets/vendor/showdown/showdown.js",
+                            "core/client/assets/vendor/showdown/extensions/ghostdown.js",
+                            "core/shared/vendor/showdown/extensions/github.js",
+                            "core/client/assets/vendor/shortcuts.js",
+                            "core/client/assets/vendor/validator-client.js",
+                            "core/client/assets/vendor/countable.js",
+                            "core/client/assets/vendor/to-title-case.js",
+                            "core/client/assets/vendor/packery.pkgd.min.js",
+                            "core/client/assets/vendor/fastclick.js",
+
+                            "core/client/init.js",
+
+                            "core/client/mobile-interactions.js",
+                            "core/client/toggle.js",
+                            "core/client/markdown-actions.js",
+                            "core/client/helpers/index.js",
+
+                            "core/client/tpl/hbs-tpl.js",
+
+                            "core/client/models/**/*.js",
+
+                            "core/client/views/**/*.js",
+
+                            "core/client/router.js"
+                        ]
+                    }
+                }
+            },
+
+            uglify: {
+                prod: {
+                    files: {
+                        "core/built/scripts/ghost.min.js": "core/built/scripts/ghost.js"
+                    }
+                }
             }
         };
 
@@ -349,6 +461,13 @@ var path = require('path'),
         grunt.registerTask('setTestEnv', function () {
             // Use 'testing' Ghost config; unless we are running on travis (then show queries for debugging)
             process.env.NODE_ENV = process.env.TRAVIS ? 'travis' : 'testing';
+        });
+
+        grunt.registerTask('loadConfig', function () {
+            var done = this.async();
+            configLoader.loadConfig().then(function () {
+                done();
+            });
         });
 
         // Update the package information after changes
@@ -645,6 +764,8 @@ var path = require('path'),
             "shell:bourbon",
             "sass:admin",
             "handlebars",
+            "concat",
+            "uglify",
             "bump:build",
             "updateCurrentPackageInfo",
             "changelog",
@@ -657,6 +778,8 @@ var path = require('path'),
             "shell:bourbon",
             "sass:admin",
             "handlebars",
+            "concat",
+            "uglify",
             "bump:build",
             "updateCurrentPackageInfo",
             "changelog",
@@ -668,6 +791,8 @@ var path = require('path'),
             "shell:bourbon",
             "sass:admin",
             "handlebars",
+            "concat",
+            "uglify",
             "changelog",
             "copy:build",
             "compress:build"
@@ -681,13 +806,12 @@ var path = require('path'),
             "watch"
         ]);
 
-
         // Prepare the project for development
         // TODO: Git submodule init/update (https://github.com/jaubourg/grunt-update-submodules)?
-        grunt.registerTask("init", ["shell:bourbon", "sass:admin", 'handlebars']);
+        grunt.registerTask("init", ["shell:bourbon", "default"]);
 
-         // Run unit tests
-        grunt.registerTask("test-unit", ['setTestEnv', "mochacli:all"]);
+        // Run unit tests
+        grunt.registerTask("test-unit", ['setTestEnv', 'loadConfig', "mochacli:all"]);
 
         // Run casperjs tests only
         grunt.registerTask('test-functional', ['setTestEnv', 'express:test', 'spawn-casperjs']);
@@ -698,8 +822,12 @@ var path = require('path'),
         // Generate Docs
         grunt.registerTask("docs", ["groc"]);
 
+        // TODO: Production build task that minifies with uglify:prod
+
+        grunt.registerTask("prod", ['sass:admin', 'handlebars', 'concat', "uglify"]);
+
         // When you just say "grunt"
-        grunt.registerTask("default", ['sass:admin', 'handlebars']);
+        grunt.registerTask("default", ['sass:admin', 'handlebars', 'concat']);
     };
 
 module.exports = configureGrunt;

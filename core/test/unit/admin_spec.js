@@ -47,12 +47,14 @@ describe('Admin Controller', function() {
                 req.files.uploadimage.name = "IMAGE.jpg";
                 sinon.stub(fs, 'mkdirs').yields();
                 sinon.stub(fs, 'copy').yields();
+                sinon.stub(fs, 'unlink').yields();
                 sinon.stub(fs, 'exists').yields(false);
             });
 
             afterEach(function() {
                 fs.mkdirs.restore();
                 fs.copy.restore();
+                fs.unlink.restore();
                 fs.exists.restore();
                 clock.restore();
             });
@@ -90,7 +92,8 @@ describe('Admin Controller', function() {
             });
 
             it('should send correct path to image when today is in Sep 2013', function(done) {
-                clock = sinon.useFakeTimers(1378585460681); // Sat Sep 07 2013 21:24:20 GMT+0100 (BST)
+                // Sat Sep 07 2013 21:24
+                clock = sinon.useFakeTimers(new Date(2013, 8, 7, 21, 24).getTime());
                 sinon.stub(res, 'send', function(data) {
                     data.should.equal('/content/images/2013/Sep/IMAGE.jpg');
                     return done();
@@ -100,7 +103,8 @@ describe('Admin Controller', function() {
             });
 
             it('should send correct path to image when today is in Jan 2014', function(done) {
-                clock = sinon.useFakeTimers(1388707200000); // Wed Jan 03 2014 00:00:00 GMT+0000 (GMT)
+                // Jan 1 2014 12:00
+                clock = sinon.useFakeTimers(new Date(2014, 0, 1, 12).getTime());
                 sinon.stub(res, 'send', function(data) {
                     data.should.equal('/content/images/2014/Jan/IMAGE.jpg');
                     return done();
@@ -110,7 +114,8 @@ describe('Admin Controller', function() {
             });
 
             it('can upload two different images with the same name without overwriting the first', function(done) {
-                clock = sinon.useFakeTimers(1378634224614); // Sun Sep 08 2013 10:57:04 GMT+0100 (BST)
+                // Sun Sep 08 2013 10:57
+                clock = sinon.useFakeTimers(new Date(2013, 8, 8, 10, 57).getTime());
                 fs.exists.withArgs('content/images/2013/Sep/IMAGE.jpg').yields(true);
                 fs.exists.withArgs('content/images/2013/Sep/IMAGE-1.jpg').yields(false);
 
@@ -123,7 +128,8 @@ describe('Admin Controller', function() {
             });
 
             it('can upload five different images with the same name without overwriting the first', function(done) {
-                clock = sinon.useFakeTimers(1378634224614); // Sun Sep 08 2013 10:57:04 GMT+0100 (BST)
+                // Sun Sep 08 2013 10:57
+                clock = sinon.useFakeTimers(new Date(2013, 8, 8, 10, 57).getTime());
                 fs.exists.withArgs('content/images/2013/Sep/IMAGE.jpg').yields(true);
                 fs.exists.withArgs('content/images/2013/Sep/IMAGE-1.jpg').yields(true);
                 fs.exists.withArgs('content/images/2013/Sep/IMAGE-2.jpg').yields(true);
@@ -136,6 +142,17 @@ describe('Admin Controller', function() {
                 });
 
                 return admin.uploader(req, res);
+            });
+
+            it('should not leave temporary file when uploading', function(done) {
+                clock = sinon.useFakeTimers(new Date(2013, 8, 8, 10, 57).getTime());
+                sinon.stub(res, 'send', function(data) {
+                    fs.unlink.calledOnce.should.be.true;
+                    fs.unlink.args[0][0].should.equal('/tmp/TMPFILEID');
+                    return done();
+                });
+
+                admin.uploader(req, res);
             });
         });
     });
