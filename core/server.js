@@ -260,8 +260,10 @@ when.all([ghost.init(), helpers.loadCoreHelpers(ghost)]).then(function () {
     // Add in all trailing slashes
     server.use(slashes());
 
-    server.use(express.bodyParser({}));
-    server.use(express.bodyParser({uploadDir: __dirname + '/content/images'}));
+    server.use(express.json());
+    server.use(express.urlencoded());
+    server.use('/ghost/upload/', express.multipart());
+    server.use('/ghost/upload/', express.multipart({uploadDir: __dirname + '/content/images'}));
     server.use(express.cookieParser(ghost.dbHash));
     server.use(express.cookieSession({ cookie: { maxAge: 60000000 }}));
 
@@ -283,24 +285,8 @@ when.all([ghost.init(), helpers.loadCoreHelpers(ghost)]).then(function () {
     // 404 Handler
     server.use(errors.render404Page);
 
-    // TODO: Handle all application errors (~500)
-    // Just stubbed at this stage!
-    server.use(function error500Handler(err, req, res, next) {
-        if (!err || !(err instanceof Error)) {
-            next();
-        }
-
-        // For the time being, just log and continue.
-        errors.logError(err, "Middleware", "Ghost caught a processing error in the middleware layer.");
-        next(err);
-    });
-
-    // All other errors
-    if (server.get('env') === "production") {
-        server.use(express.errorHandler({ dumpExceptions: false, showStack: false }));
-    } else {
-        server.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
-    }
+    // 500 Handler
+    server.use(errors.render500Page);
 
     // ## Routing
 
@@ -351,6 +337,7 @@ when.all([ghost.init(), helpers.loadCoreHelpers(ghost)]).then(function () {
     server.get('/ghost/debug/db/export/', auth, admin.debug['export']);
     server.post('/ghost/debug/db/import/', auth, admin.debug['import']);
     server.get('/ghost/debug/db/reset/', auth, admin.debug.reset);
+    // We don't want to register bodyParser globally b/c of security concerns, so use multipart only here
     server.post('/ghost/upload/', admin.uploader);
     server.get(/^\/(ghost$|(ghost-admin|admin|wp-admin|dashboard|signin)\/?)/, auth, function (req, res) {
         res.redirect('/ghost/');
