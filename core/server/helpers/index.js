@@ -179,6 +179,18 @@ coreHelpers = function (ghost) {
         );
     });
 
+    // ### Filestorage helper
+    //
+    // *Usage example:*
+    // `{{fileStorage}}`
+    //
+    // Returns the config value for fileStorage.
+    ghost.registerThemeHelper('fileStorage', function (context, options) {
+        if (ghost.config().hasOwnProperty('fileStorage')) {
+            return ghost.config().fileStorage.toString();
+        }
+        return "true";
+    });
 
     ghost.registerThemeHelper('body_class', function (options) {
         var classes = [];
