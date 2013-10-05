@@ -281,7 +281,7 @@
             this.addSubview(new PublishBar({el: "#publish-bar", model: this.model})).render();
 
             this.$('#entry-title').val(this.model.get('title')).focus();
-            this.$('#entry-markdown').html(this.model.get('markdown'));
+            this.$('#entry-markdown').text(this.model.get('markdown'));
 
             this.initMarkdown();
             this.renderPreview();
@@ -432,7 +432,8 @@
         },
 
         initUploads: function () {
-            this.$('.js-drop-zone').upload({editor: true});
+            var filestorage = $('#entry-markdown-content').data('filestorage');
+            this.$('.js-drop-zone').upload({editor: true, fileStorage: filestorage});
             this.$('.js-drop-zone').on('uploadstart', $.proxy(this.disableEditor, this));
             this.$('.js-drop-zone').on('uploadstart', this.uploadMgr.handleDownloadStart);
             this.$('.js-drop-zone').on('uploadfailure', $.proxy(this.enableEditor, this));
