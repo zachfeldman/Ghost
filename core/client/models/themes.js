@@ -1,8 +1,8 @@
 /*global window, document, Ghost, $, _, Backbone */
 (function () {
-    "use strict";
+    'use strict';
 
-    Ghost.Models.Themes = Backbone.Model.extend({
+    Ghost.Models.Themes = Ghost.TemplateModel.extend({
         url: Ghost.settings.apiRoot + '/themes'
     });
 

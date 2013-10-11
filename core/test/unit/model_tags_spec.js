@@ -36,8 +36,8 @@ describe('Tag Model', function () {
         var PostModel = Models.Post;
 
         it('can add a tag', function (done) {
-            var newPost = {title: 'Test Title 1', markdown: 'Test Content 1'},
-                newTag = {name: 'tag1'},
+            var newPost = testUtils.DataGenerator.forModel.posts[0],
+                newTag = testUtils.DataGenerator.forModel.tags[0],
                 createdPostID;
 
             when.all([
@@ -62,8 +62,8 @@ describe('Tag Model', function () {
             // The majority of this test is ripped from above, which is obviously a Bad Thing.
             // Would be nice to find a way to seed data with relations for cases like this,
             // because there are more DB hits than needed
-            var newPost = {title: 'Test Title 1', markdown: 'Test Content 1'},
-                newTag = {name: 'tag1'},
+            var newPost = testUtils.DataGenerator.forModel.posts[0],
+                newTag = testUtils.DataGenerator.forModel.tags[0],
                 createdTagID,
                 createdPostID;
 
@@ -96,12 +96,11 @@ describe('Tag Model', function () {
 
             function seedTags(tagNames) {
                 var createOperations = [
-                    PostModel.add({title: 'title', markdown: 'content'})
+                    PostModel.add(testUtils.DataGenerator.forModel.posts[0])
                 ];
 
                 var tagModels = tagNames.map(function (tagName) { return TagModel.add({name: tagName}); });
                 createOperations = createOperations.concat(tagModels);
-
 
                 return when.all(createOperations).then(function (models) {
                     var postModel = models[0],
@@ -130,7 +129,7 @@ describe('Tag Model', function () {
                     return postModel.save();
                 }).then(function (postModel) {
                     var tagNames = postModel.related('tags').models.map(function (t) { return t.attributes.name; });
-                    tagNames.should.eql(seededTagNames);
+                    tagNames.sort().should.eql(seededTagNames);
 
                     return TagModel.findAll();
                 }).then(function (tagsFromDB) {
@@ -155,7 +154,7 @@ describe('Tag Model', function () {
                     return PostModel.read({id: postModel.id}, { withRelated: ['tags']});
                 }).then(function (reloadedPost) {
                     var tagNames = reloadedPost.related('tags').models.map(function (t) { return t.attributes.name; });
-                    tagNames.should.eql(['tag1', 'tag3']);
+                    tagNames.sort().should.eql(['tag1', 'tag3']);
 
                     done();
                 }).then(null, done);
@@ -180,7 +179,7 @@ describe('Tag Model', function () {
                 }).then(function (reloadedPost) {
                     var tagModels = reloadedPost.related('tags').models,
                         tagNames = tagModels.map(function (t) { return t.attributes.name; });
-                    tagNames.should.eql(['tag1', 'tag2', 'tag3']);
+                    tagNames.sort().should.eql(['tag1', 'tag2', 'tag3']);
                     tagModels[2].id.should.eql(4); // make sure it hasn't just added a new tag with the same name
 
                     done();
@@ -201,7 +200,7 @@ describe('Tag Model', function () {
                     return PostModel.read({id: postModel.id}, { withRelated: ['tags']});
                 }).then(function (reloadedPost) {
                     var tagNames = reloadedPost.related('tags').models.map(function (t) { return t.attributes.name; });
-                    tagNames.should.eql(['tag1', 'tag2', 'tag3']);
+                    tagNames.sort().should.eql(['tag1', 'tag2', 'tag3']);
 
                     done();
                 }).then(null, done);
@@ -209,7 +208,7 @@ describe('Tag Model', function () {
 
 
             it('can add a tag to a post on creation', function (done) {
-                var newPost = {title: 'Test Title 1', markdown: 'Test Content 1', tags: [{name: 'test_tag_1'}]};
+                var newPost = _.extend(testUtils.DataGenerator.forModel.posts[0], {tags: [{name: 'test_tag_1'}]})
 
                 PostModel.add(newPost).then(function (createdPost) {
                     return PostModel.read({id: createdPost.id}, { withRelated: ['tags']});

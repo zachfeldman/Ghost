@@ -33,7 +33,9 @@
             {'key': 'Ctrl+Alt+W', 'style': 'selectword'},
             {'key': 'Ctrl+L', 'style': 'list'},
             {'key': 'Ctrl+Alt+C', 'style': 'copyHTML'},
-            {'key': 'Meta+Alt+C', 'style': 'copyHTML'}
+            {'key': 'Meta+Alt+C', 'style': 'copyHTML'},
+            {'key': 'Meta+Enter', 'style': 'newLine'},
+            {'key': 'Ctrl+Enter', 'style': 'newLine'}
         ],
         imageMarkdownRegex = /^(?:\{<(.*?)>\})?!(?:\[([^\n\]]*)\])(?:\(([^\n\]]*)\))?$/gim,
         markerRegex = /\{<([\w\W]*?)>\}/;
@@ -281,7 +283,9 @@
             this.addSubview(new PublishBar({el: "#publish-bar", model: this.model})).render();
 
             this.$('#entry-title').val(this.model.get('title')).focus();
-            this.$('#entry-markdown').html(this.model.get('markdown'));
+            this.$('#entry-markdown').text(this.model.get('markdown'));
+
+            this.listenTo(this.model, 'change:title', this.renderTitle);
 
             this.initMarkdown();
             this.renderPreview();
@@ -363,6 +367,10 @@
             }
         },
 
+        renderTitle: function () {
+            this.$('#entry-title').val(this.model.get('title'));
+        },
+
         // This is a hack to remove iOS6 white space on orientation change bug
         // See: http://cl.ly/RGx9
         orientationChange: function () {
@@ -432,7 +440,8 @@
         },
 
         initUploads: function () {
-            this.$('.js-drop-zone').upload({editor: true});
+            var filestorage = $('#entry-markdown-content').data('filestorage');
+            this.$('.js-drop-zone').upload({editor: true, fileStorage: filestorage});
             this.$('.js-drop-zone').on('uploadstart', $.proxy(this.disableEditor, this));
             this.$('.js-drop-zone').on('uploadstart', this.uploadMgr.handleDownloadStart);
             this.$('.js-drop-zone').on('uploadfailure', $.proxy(this.enableEditor, this));

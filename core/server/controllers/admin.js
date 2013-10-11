@@ -1,17 +1,17 @@
-var Ghost = require('../../ghost'),
-    dataExport = require('../data/export'),
-    dataImport = require('../data/import'),
-    _ = require('underscore'),
-    fs = require('fs-extra'),
-    path = require('path'),
-    when = require('when'),
-    nodefn = require('when/node/function'),
-    api = require('../api'),
-    moment = require('moment'),
-    errors = require('../errorHandling'),
+var Ghost         = require('../../ghost'),
+    dataExport    = require('../data/export'),
+    dataImport    = require('../data/import'),
+    _             = require('underscore'),
+    fs            = require('fs-extra'),
+    path          = require('path'),
+    when          = require('when'),
+    nodefn        = require('when/node/function'),
+    api           = require('../api'),
+    moment        = require('moment'),
+    errors        = require('../errorHandling'),
 
-    ghost = new Ghost(),
-    dataProvider = ghost.dataProvider,
+    ghost         = new Ghost(),
+    dataProvider  = ghost.dataProvider,
     adminNavbar,
     adminControllers,
     loginSecurity = [];
@@ -73,11 +73,13 @@ adminControllers = {
     'uploader': function (req, res) {
 
         var currentDate = moment(),
-            month = currentDate.format("MMM"),
-            year =  currentDate.format("YYYY"),
+            month = currentDate.format('MMM'),
+            year =  currentDate.format('YYYY'),
             tmp_path = req.files.uploadimage.path,
-            dir = path.join('content/images', year, month),
+            imagespath = path.join(ghost.paths().appRoot, 'content/images'),
+            dir = path.join(imagespath, year, month),
             ext = path.extname(req.files.uploadimage.name).toLowerCase(),
+            type = req.files.uploadimage.type,
             basename = path.basename(req.files.uploadimage.name, ext).replace(/[\W]/gi, '_');
 
         function renameFile(target_path) {
@@ -98,20 +100,19 @@ adminControllers = {
                         }
 
                         // the src for the image must be in URI format, not a file system path, which in Windows uses \
-                        var src = path.join('/', target_path).replace(new RegExp('\\' + path.sep, 'g'), '/');
+                        var src = path.join('/', target_path.replace(ghost.paths().appRoot, "")).replace(new RegExp('\\' + path.sep, 'g'), '/');
                         return res.send(src);
                     });
                 });
             });
         }
 
-        // TODO: is it better to use file type eg. image/png?
-        if (ext === ".jpg" || ext === ".jpeg"  || ext === ".png" || ext === ".gif") {
+        if (type === 'image/jpeg' || type === 'image/png' || type === 'image/gif') {
             getUniqueFileName(dir, basename, ext, null, function (filename) {
                 renameFile(filename);
             });
         } else {
-            res.send(404, "Invalid filetype");
+            res.send(404, 'Invalid filetype');
         }
     },
     'login': function (req, res) {
@@ -269,8 +270,8 @@ adminControllers = {
 
         // TODO: Centralise list/enumeration of settings panes, so we don't
         // run into trouble in future.
-        var allowedSections = ["", "general", "user"],
-            section = req.url.replace(/(^\/ghost\/settings[\/]*|\/$)/ig, "");
+        var allowedSections = ['', 'general', 'user'],
+            section = req.url.replace(/(^\/ghost\/settings[\/]*|\/$)/ig, '');
 
         if (allowedSections.indexOf(section) < 0) {
             return next();
@@ -312,31 +313,38 @@ adminControllers = {
                     };
 
                     return api.notifications.add(notification).then(function () {
-                        res.redirect("/ghost/debug/");
+                        res.redirect('/ghost/debug/');
                     });
                 });
         },
         'import': function (req, res) {
-            if (!req.files.importfile) {
-                // Notify of an error if it occurs
+            if (!req.files.importfile || req.files.importfile.size === 0 || req.files.importfile.name.indexOf('json') === -1) {
+                /**
+                 * Notify of an error if it occurs
+                 *
+                 * - If there's no file (although if you don't select anything, the input is still submitted, so
+                 *   !req.files.importfile will always be false)
+                 * - If the size is 0
+                 * - If the name doesn't have json in it
+                 */
                 var notification = {
                     type: 'error',
-                    message:  "Must select a file to import",
+                    message:  "Must select a .json file to import",
                     status: 'persistent',
                     id: 'per-' + (ghost.notifications.length + 1)
                 };
 
                 return api.notifications.add(notification).then(function () {
-                    res.redirect("/ghost/debug/");
+                    res.redirect('/ghost/debug/');
                 });
             }
 
             // Get the current version for importing
-            api.settings.read({ key: "databaseVersion" })
+            api.settings.read({ key: 'databaseVersion' })
                 .then(function (setting) {
                     return when(setting.value);
                 }, function () {
-                    return when("001");
+                    return when('001');
                 })
                 .then(function (databaseVersion) {
                     // Read the file contents
@@ -369,6 +377,9 @@ adminControllers = {
 
                     return api.notifications.add(notification).then(function () {
                         delete req.session.user;
+                        res.set({
+                            "X-Cache-Invalidate": "/*"
+                        });
                         res.redirect('/ghost/signin/');
                     });
 
@@ -399,6 +410,9 @@ adminControllers = {
 
                     return api.notifications.add(notification).then(function () {
                         delete req.session.user;
+                        res.set({
+                            "X-Cache-Invalidate": "/*"
+                        });
                         res.redirect('/ghost/signup/');
                     });
                 }, function resetFailure(error) {

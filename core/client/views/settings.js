@@ -18,7 +18,7 @@
 
             this.addSubview(this.sidebar);
 
-            this.listenTo(Ghost.router, "route:settings", this.changePane);
+            this.listenTo(Ghost.router, 'route:settings', this.changePane);
         },
 
         changePane: function (pane) {
@@ -155,7 +155,8 @@
         },
 
         saveSettings: function () {
-            var title = this.$('#blog-title').val(),
+            var self = this,
+                title = this.$('#blog-title').val(),
                 description = this.$('#blog-description').val(),
                 email = this.$('#email-address').val(),
                 postsPerPage = this.$('#postsPerPage').val();
@@ -186,7 +187,7 @@
                 }, {
                     success: this.saveSuccess,
                     error: this.saveError
-                });
+                }).then(function () { self.render(); });
             }
         },
         showLogo: function (e) {
@@ -200,7 +201,7 @@
             this.showUpload('cover', settings.cover);
         },
         showUpload: function (key, src) {
-            var self = this, upload = new Ghost.Models.uploadModal({'key': key, 'src': src, 'accept': {
+            var self = this, upload = new Ghost.Models.uploadModal({'key': key, 'src': src, 'id': this.id, 'accept': {
                 func: function () { // The function called on acceptance
                     var data = {};
                     if (this.$('#uploadurl').val()) {
@@ -212,8 +213,10 @@
                     self.model.save(data, {
                         success: self.saveSuccess,
                         error: self.saveError
+                    }).then(function () {
+                        self.render();
                     });
-                    self.render();
+
                     return true;
                 },
                 buttonClass: "button-save right",
@@ -234,6 +237,8 @@
 
     // ### User profile
     Settings.user = Settings.Pane.extend({
+        templateName: 'settings/user-profile',
+
         id: 'user',
 
         options: {
@@ -244,7 +249,8 @@
             'click .button-save': 'saveUser',
             'click .button-change-password': 'changePassword',
             'click .js-modal-cover': 'showCover',
-            'click .js-modal-image': 'showImage'
+            'click .js-modal-image': 'showImage',
+            'keyup .user-profile': 'handleEnterKeyOnForm'
         },
         showCover: function (e) {
             e.preventDefault();
@@ -257,7 +263,7 @@
             this.showUpload('image', user.image);
         },
         showUpload: function (key, src) {
-            var self = this, upload = new Ghost.Models.uploadModal({'key': key, 'src': src, 'accept': {
+            var self = this, upload = new Ghost.Models.uploadModal({'key': key, 'src': src, 'id': this.id, 'accept': {
                 func: function () { // The function called on acceptance
                     var data = {};
                     if (this.$('#uploadurl').val()) {
@@ -268,8 +274,9 @@
                     self.model.save(data, {
                         success: self.saveSuccess,
                         error: self.saveError
+                    }).then(function () {
+                        self.render();
                     });
-                    self.render();
                     return true;
                 },
                 buttonClass: "button-save right",
@@ -281,9 +288,35 @@
             }));
         },
 
+        handleEnterKeyOnForm: function (ev) {
+            // Don't worry about it unless it's an enter key
+            if (ev.which !== 13) {
+                return;
+            }
+
+            var $target = $(ev.target);
+
+            if ($target.is("textarea")) {
+                // Allow enter key on user bio text area.
+                return;
+            }
+
+            if ($target.is('input[type=password]')) {
+                // Change password if on a password input
+                return this.changePassword(ev);
+            }
+
+            // Simulate clicking save otherwise
+            ev.preventDefault();
+
+            this.saveUser(ev);
+
+            return false;
+        },
 
         saveUser: function () {
-            var userName = this.$('#user-name').val(),
+            var self = this,
+                userName = this.$('#user-name').val(),
                 userEmail = this.$('#user-email').val(),
                 userLocation = this.$('#user-location').val(),
                 userWebsite = this.$('#user-website').val(),
@@ -322,6 +355,8 @@
                 }, {
                     success: this.saveSuccess,
                     error: this.saveError
+                }).then(function () {
+                    self.render();
                 });
             }
         },
@@ -365,11 +400,11 @@
                             status: 'passive'
                         });
                     }
+                }).then(function () {
+                    self.render();
                 });
             }
         },
-
-        templateName: 'settings/user-profile',
 
         afterRender: function () {
             var self = this;

@@ -13,7 +13,7 @@ var testUtils = require('./testUtils'),
     PermissionsProvider = Models.Permission,
     PostProvider = Models.Post;
 
-describe('permissions', function () {
+describe('Permissions', function () {
 
     before(function (done) {
         testUtils.clearData()
@@ -94,7 +94,7 @@ describe('permissions', function () {
             .then(function (actionsMap) {
                 should.exist(actionsMap);
 
-                actionsMap.edit.should.eql(['post', 'tag', 'user', 'page']);
+                actionsMap.edit.sort().should.eql(['post', 'tag', 'user', 'page'].sort());
 
                 actionsMap.should.equal(permissions.actionsMap);
 

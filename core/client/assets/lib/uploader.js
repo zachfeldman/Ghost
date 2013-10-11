@@ -23,8 +23,6 @@
             complete: function (result) {
                 var self = this;
 
-                $dropzone.trigger("uploadsuccess", [result, $dropzone.attr('id')]);
-
                 function showImage(width, height) {
                     $dropzone.find('img.js-upload-target').attr({"width": width, "height": height}).css({"display": "block"});
                     $dropzone.find('.fileupload-loading').remove();
@@ -82,7 +80,7 @@
                                 data.submit();
                             });
                     },
-                    dropZone: $dropzone,
+                    dropZone: settings.fileStorage ? $dropzone : null,
                     progressall: function (e, data) {
                         var progress = parseInt(data.loaded / data.total * 100, 10);
                         if (!settings.editor) {$progress.find('div.js-progress').css({"position": "absolute", "top": "40px"}); }
@@ -137,10 +135,14 @@
                 var self = this;
                 //This is the start point if no image exists
                 $dropzone.find('img.js-upload-target').css({"display": "none"});
-                $dropzone.removeClass('pre-image-uploader').addClass('image-uploader');
+                $dropzone.removeClass('pre-image-uploader image-uploader-url').addClass('image-uploader');
                 this.removeExtras();
                 this.buildExtras();
                 this.bindFileUpload();
+                if (!settings.fileStorage) {
+                    self.initUrl();
+                    return;
+                }
                 $dropzone.find('a.image-url').on('click', function () {
                     self.initUrl();
                 });
@@ -148,8 +150,11 @@
             initUrl: function () {
                 var self = this, val;
                 this.removeExtras();
+                $dropzone.addClass('image-uploader-url').removeClass('pre-image-uploader');
                 $dropzone.find('.js-fileupload').addClass('right');
-                $dropzone.append($cancel);
+                if (settings.fileStorage) {
+                    $dropzone.append($cancel);
+                }
                 $dropzone.find('.js-cancel').on('click', function () {
                     $dropzone.find('.js-url').remove();
                     $dropzone.find('.js-fileupload').removeClass('right');
@@ -163,8 +168,9 @@
                 $dropzone.find('div.description').before($url);
 
                 $dropzone.find('.js-button-accept').on('click', function () {
-                    $dropzone.find('div.description').hide();
                     val = $('#uploadurl').val();
+                    $dropzone.trigger('uploadstart', [$dropzone.attr('id')]);
+                    $dropzone.find('div.description').hide();
                     $dropzone.find('.js-fileupload').removeClass('right');
                     $dropzone.find('.js-url').remove();
                     $dropzone.find('button.centre').remove();
@@ -175,7 +181,7 @@
                 var self = this;
                 // This is the start point if an image already exists
                 source = $dropzone.find('img.js-upload-target').attr('src');
-                $dropzone.removeClass('image-uploader').addClass('pre-image-uploader');
+                $dropzone.removeClass('image-uploader image-uploader-url').addClass('pre-image-uploader');
                 $dropzone.find('div.description').hide();
                 $dropzone.append($cancel);
                 $dropzone.find('.js-cancel').on('click', function () {
@@ -205,9 +211,9 @@
     $.fn.upload = function (options) {
         var settings = $.extend({
             progressbar: true,
-            editor: false
+            editor: false,
+            fileStorage: true
         }, options);
-
         return this.each(function () {
             var $dropzone = $(this),
                 ui;
