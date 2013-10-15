@@ -1,1 +1,1 @@
-web: node index.js --production
+web: npm start --production -P 200
