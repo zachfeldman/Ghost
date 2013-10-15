@@ -1,6 +1,6 @@
 // # Ghost Configuration
 // Setup your Ghost install for various environments
-
+//red herring
 var path = require('path'),
     config;
 
